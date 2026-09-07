@@ -2,22 +2,17 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
+	"todo-cli/storage"
+	"todo-cli/todo"
 )
 
-type Todo struct {
-	ID    int    `json:"id"`
-	Title string `json:"title"`
-	Done  bool   `json:"done"`
-}
-
 func main() {
-	todos := loadTodos()
-	nextID := getNextID(todos)
+	todos := storage.LoadTodos()
+	nextID := todo.GetNextID(todos)
 
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -27,12 +22,10 @@ func main() {
 		switch parts[0] {
 		case "add":
 			if len(parts) > 1 {
-				todos = addTodo(todos, parts[1], nextID)
+				todos = todo.AddTodo(todos, parts[1], nextID)
 				nextID++
 
-				err := saveTodos(todos)
-				if err != nil {
-					fmt.Println("保存失敗:", err)
+				if !save(todos) {
 					continue
 				}
 
@@ -47,10 +40,8 @@ func main() {
 					fmt.Println("ID 必須是數字")
 					continue
 				}
-				if completeTodo(todos, id) {
-					err := saveTodos(todos)
-					if err != nil {
-						fmt.Println("保存失敗:", err)
+				if todo.CompleteTodo(todos, id) {
+					if !save(todos) {
 						continue
 					}
 
@@ -66,14 +57,12 @@ func main() {
 					fmt.Println("ID 必須是數字")
 					continue
 				}
-				newTodos, success := deleteTodo(todos, id)
+				newTodos, success := todo.DeleteTodo(todos, id)
 
 				if success {
 					todos = newTodos
 
-					err := saveTodos(todos)
-					if err != nil {
-						fmt.Println("保存失敗:", err)
+					if !save(todos) {
 						continue
 					}
 
@@ -89,7 +78,7 @@ func main() {
 	}
 }
 
-func printTodos(todos []Todo) {
+func printTodos(todos []todo.Todo) {
 	for _, todo := range todos {
 		status := "[ ]"
 		if todo.Done {
@@ -100,71 +89,11 @@ func printTodos(todos []Todo) {
 	}
 }
 
-func addTodo(todos []Todo, title string, id int) []Todo {
-	return append(todos, Todo{
-		ID:    id,
-		Title: title,
-		Done:  false,
-	})
-}
-
-func completeTodo(todos []Todo, id int) bool {
-	for i, todo := range todos {
-		if id == todo.ID {
-			todos[i].Done = true
-			return true
-		}
-	}
-	return false
-}
-
-func deleteTodo(todos []Todo, id int) ([]Todo, bool) {
-	for i, todo := range todos {
-		if id == todo.ID {
-			return append(todos[:i], todos[i+1:]...), true
-		}
-	}
-	return todos, false
-}
-
-func saveTodos(todos []Todo) error {
-	data, err := json.Marshal(todos)
+func save(todos []todo.Todo) bool {
+	err := storage.SaveTodos(todos)
 	if err != nil {
-		return err
+		fmt.Println("保存失敗:", err)
+		return false
 	}
-
-	err = os.WriteFile("todos.json", data, 0644)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func loadTodos() []Todo {
-	data, err := os.ReadFile("todos.json")
-	if err != nil {
-		return []Todo{}
-	}
-
-	var todos []Todo
-
-	err = json.Unmarshal(data, &todos)
-
-	if err != nil {
-		return []Todo{}
-	}
-
-	return todos
-}
-
-func getNextID(todos []Todo) int {
-	maxID := 0
-	for _, todo := range todos {
-		if todo.ID > maxID {
-			maxID = todo.ID
-		}
-	}
-	return maxID + 1
+	return true
 }
