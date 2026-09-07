@@ -29,6 +29,13 @@ func main() {
 			if len(parts) > 1 {
 				todos = addTodo(todos, parts[1], nextID)
 				nextID++
+
+				err := saveTodos(todos)
+				if err != nil {
+					fmt.Println("保存失敗:", err)
+					continue
+				}
+
 				fmt.Println("新增成功")
 			}
 		case "list":
@@ -41,6 +48,12 @@ func main() {
 					continue
 				}
 				if completeTodo(todos, id) {
+					err := saveTodos(todos)
+					if err != nil {
+						fmt.Println("保存失敗:", err)
+						continue
+					}
+
 					fmt.Println("完成成功")
 				} else {
 					fmt.Println("找不到此項目")
@@ -54,19 +67,22 @@ func main() {
 					continue
 				}
 				newTodos, success := deleteTodo(todos, id)
-				todos = newTodos
 
 				if success {
+					todos = newTodos
+
+					err := saveTodos(todos)
+					if err != nil {
+						fmt.Println("保存失敗:", err)
+						continue
+					}
+
 					fmt.Println("刪除成功")
 				} else {
 					fmt.Println("找不到此項目")
 				}
 			}
 		case "exit":
-			err := saveTodos(todos)
-			if err != nil {
-				fmt.Println("保存失敗:", err)
-			}
 			fmt.Println("Bye!")
 			return
 		}
