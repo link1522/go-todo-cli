@@ -71,6 +71,15 @@ func main() {
 					fmt.Println("找不到此項目")
 				}
 			}
+		case "search":
+			if len(parts) > 1 {
+				foundTodos := todo.SearchTodos(todos, parts[1])
+				if len(foundTodos) == 0 {
+					fmt.Println("找不到任何項目")
+					continue
+				}
+				printTodos(foundTodos)
+			}
 		case "exit":
 			fmt.Println("Bye!")
 			return

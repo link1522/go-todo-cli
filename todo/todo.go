@@ -1,5 +1,7 @@
 package todo
 
+import "strings"
+
 type Todo struct {
 	ID    int    `json:"id"`
 	Title string `json:"title"`
@@ -41,4 +43,19 @@ func GetNextID(todos []Todo) int {
 		}
 	}
 	return maxID + 1
+}
+
+func SearchTodos(todos []Todo, keyword string) []Todo {
+	foundTodos := []Todo{}
+	keyword = strings.ToLower(keyword)
+
+	for _, item := range todos {
+		title := strings.ToLower(item.Title)
+
+		if strings.Contains(title, keyword) {
+			foundTodos = append(foundTodos, item)
+		}
+	}
+
+	return foundTodos
 }
