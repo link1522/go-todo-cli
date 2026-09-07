@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -9,9 +10,9 @@ import (
 )
 
 type Todo struct {
-	ID    int
-	Title string
-	Done  bool
+	ID    int    `json:"id"`
+	Title string `json:"title"`
+	Done  bool   `json:"done"`
 }
 
 func main() {
@@ -62,6 +63,10 @@ func main() {
 				}
 			}
 		case "exit":
+			err := saveTodos(todos)
+			if err != nil {
+				fmt.Println("保存失敗:", err)
+			}
 			fmt.Println("Bye!")
 			return
 		}
@@ -104,4 +109,19 @@ func deleteTodo(todos []Todo, id int) ([]Todo, bool) {
 		}
 	}
 	return todos, false
+}
+
+func saveTodos(todos []Todo) error {
+	data, err := json.Marshal(todos)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile("todos.json", data, 0644)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
