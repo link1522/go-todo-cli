@@ -16,8 +16,8 @@ type Todo struct {
 }
 
 func main() {
-	todos := []Todo{}
-	nextID := 1
+	todos := loadTodos()
+	nextID := getNextID(todos)
 
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -124,4 +124,31 @@ func saveTodos(todos []Todo) error {
 	}
 
 	return nil
+}
+
+func loadTodos() []Todo {
+	data, err := os.ReadFile("todos.json")
+	if err != nil {
+		return []Todo{}
+	}
+
+	var todos []Todo
+
+	err = json.Unmarshal(data, &todos)
+
+	if err != nil {
+		return []Todo{}
+	}
+
+	return todos
+}
+
+func getNextID(todos []Todo) int {
+	maxID := 0
+	for _, todo := range todos {
+		if todo.ID > maxID {
+			maxID = todo.ID
+		}
+	}
+	return maxID + 1
 }
