@@ -40,8 +40,26 @@ func TestAddTodo(t *testing.T) {
 				t.Fatalf("expected %d todos, got %d", tt.wantLen, len(got))
 			}
 
-			if got[len(got)-1].ID != tt.id {
-				t.Errorf("expected ID %d, got %d", tt.id, got[len(got)-1].ID)
+			last := got[len(got)-1]
+
+			if last.ID != tt.id {
+				t.Errorf("expected ID %d, got %d", tt.id, last.ID)
+			}
+
+			if last.Title != tt.title {
+				t.Errorf("expected Title %s, got %s", tt.title, last.Title)
+			}
+
+			if last.Done {
+				t.Errorf("expected Done false, got true")
+			}
+
+			for i, original := range tt.todos {
+				actual := got[i]
+
+				if actual != original {
+					t.Errorf("todo at index %d changed: expected %+v, got %+v", i, original, actual)
+				}
 			}
 		})
 	}
