@@ -1,6 +1,9 @@
 package todo
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestAddTodo(t *testing.T) {
 	tests := []struct {
@@ -62,5 +65,37 @@ func TestAddTodo(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestDeleteTodo_Middle(t *testing.T) {
+	todos := []Todo{
+		{ID: 1, Title: "A"},
+		{ID: 2, Title: "B"},
+		{ID: 3, Title: "C"},
+	}
+
+	before := slices.Clone(todos)
+
+	got, found := DeleteTodo(todos, 2)
+
+	t.Logf("before: %+v", before)
+	t.Logf("input after: %+v", todos)
+	t.Logf("result: %+v", got)
+
+	if !found {
+		t.Error("found should be true")
+	}
+
+	want := []Todo{
+		{ID: 1, Title: "A"},
+		{ID: 3, Title: "C"},
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("expected %+v, got %+v", want, got)
+	}
+
+	if slices.Equal(before, todos) {
+		t.Error("expected input slice elements to change")
 	}
 }
