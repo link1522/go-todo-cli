@@ -68,7 +68,96 @@ func TestAddTodo(t *testing.T) {
 	}
 }
 
-func TestDeleteTodo_Middle(t *testing.T) {
+func TestDeleteTodo(t *testing.T) {
+	tests := []struct {
+		name      string
+		todos     []Todo
+		deleteID  int
+		want      []Todo
+		wantFound bool
+	}{
+		{
+			name: "delete first",
+			todos: []Todo{
+				{ID: 1, Title: "A", Done: false},
+				{ID: 2, Title: "B", Done: false},
+				{ID: 3, Title: "C", Done: false},
+			},
+			deleteID: 1,
+			want: []Todo{
+				{ID: 2, Title: "B", Done: false},
+				{ID: 3, Title: "C", Done: false},
+			},
+			wantFound: true,
+		},
+		{
+			name: "delete middle",
+			todos: []Todo{
+				{ID: 1, Title: "A", Done: false},
+				{ID: 2, Title: "B", Done: false},
+				{ID: 3, Title: "C", Done: false},
+			},
+			deleteID: 2,
+			want: []Todo{
+				{ID: 1, Title: "A", Done: false},
+				{ID: 3, Title: "C", Done: false},
+			},
+			wantFound: true,
+		},
+		{
+			name: "delete last",
+			todos: []Todo{
+				{ID: 1, Title: "A", Done: false},
+				{ID: 2, Title: "B", Done: false},
+				{ID: 3, Title: "C", Done: false},
+			},
+			deleteID: 3,
+			want: []Todo{
+				{ID: 1, Title: "A", Done: false},
+				{ID: 2, Title: "B", Done: false},
+			},
+			wantFound: true,
+		},
+		{
+			name: "delete not found",
+			todos: []Todo{
+				{ID: 1, Title: "A", Done: false},
+				{ID: 2, Title: "B", Done: false},
+				{ID: 3, Title: "C", Done: false},
+			},
+			deleteID: 99,
+			want: []Todo{
+				{ID: 1, Title: "A", Done: false},
+				{ID: 2, Title: "B", Done: false},
+				{ID: 3, Title: "C", Done: false},
+			},
+			wantFound: false,
+		},
+		{
+			name:      "delete empty slice",
+			todos:     []Todo{},
+			deleteID:  1,
+			want:      []Todo{},
+			wantFound: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, found := DeleteTodo(tt.todos, tt.deleteID)
+
+			if found != tt.wantFound {
+				t.Errorf("expected %t, got %t", tt.wantFound, found)
+			}
+
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("expected %+v, got %+v", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestDeleteTodo_MutatesInput(t *testing.T) {
 	todos := []Todo{
 		{ID: 1, Title: "A"},
 		{ID: 2, Title: "B"},
@@ -77,25 +166,9 @@ func TestDeleteTodo_Middle(t *testing.T) {
 
 	before := slices.Clone(todos)
 
-	got, found := DeleteTodo(todos, 2)
+	_, found := DeleteTodo(todos, 2)
 
-	t.Logf("before: %+v", before)
-	t.Logf("input after: %+v", todos)
-	t.Logf("result: %+v", got)
-
-	if !found {
-		t.Error("found should be true")
-	}
-
-	want := []Todo{
-		{ID: 1, Title: "A"},
-		{ID: 3, Title: "C"},
-	}
-	if !slices.Equal(got, want) {
-		t.Errorf("expected %+v, got %+v", want, got)
-	}
-
-	if slices.Equal(before, todos) {
+	if found && slices.Equal(todos, before) {
 		t.Error("expected input slice elements to change")
 	}
 }
