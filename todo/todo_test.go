@@ -408,3 +408,36 @@ func TestSearchTodos(t *testing.T) {
 		})
 	}
 }
+
+func TestSearchTodos_DoesNotMutateInput(t *testing.T) {
+	original := []Todo{
+		{ID: 1, Title: "Learn Go"},
+		{ID: 2, Title: "Learn Python"},
+		{ID: 3, Title: "Read Book"},
+	}
+
+	before := slices.Clone(original)
+
+	// TODO 1:
+	// 搜尋 "Learn"
+	// 將結果存入 found
+	found := SearchTodos(original, "Learn")
+
+	// TODO 2:
+	// 驗證搜尋結果包含 ID 1、ID 2
+	// 並確認結果順序正確
+	want := []Todo{
+		{ID: 1, Title: "Learn Go"},
+		{ID: 2, Title: "Learn Python"},
+	}
+	if !slices.Equal(found, want) {
+		t.Errorf("expected %+v, got %+v", want, found)
+	}
+
+	// TODO 3:
+	// 使用 slices.Equal
+	// 驗證 original 與 before 相同
+	if !slices.Equal(original, before) {
+		t.Error("original should be the same with before")
+	}
+}
