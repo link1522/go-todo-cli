@@ -215,3 +215,71 @@ func TestDeleteTodo_ClonePreservesOriginal(t *testing.T) {
 		t.Error("original should be the same with before")
 	}
 }
+
+func TestCompleteTodo(t *testing.T) {
+	tests := []struct {
+		name      string
+		todos     []Todo
+		id        int
+		wantFound bool
+		want      []Todo
+	}{
+		{
+			name: "complete existing todo",
+			todos: []Todo{
+				{ID: 1, Title: "A"},
+				{ID: 2, Title: "B"},
+			},
+			id:        2,
+			wantFound: true,
+			want: []Todo{
+				{ID: 1, Title: "A"},
+				{ID: 2, Title: "B", Done: true},
+			},
+		},
+		{
+			name: "complete not exist todo",
+			todos: []Todo{
+				{ID: 1, Title: "A"},
+				{ID: 2, Title: "B"},
+			},
+			id:        3,
+			wantFound: false,
+			want: []Todo{
+				{ID: 1, Title: "A"},
+				{ID: 2, Title: "B"},
+			},
+		},
+		{
+			name: "complete todo already done",
+			todos: []Todo{
+				{ID: 1, Title: "A"},
+				{ID: 2, Title: "B", Done: true},
+			},
+			id:        2,
+			wantFound: true,
+			want: []Todo{
+				{ID: 1, Title: "A"},
+				{ID: 2, Title: "B", Done: true},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// TODO 1: 呼叫 CompleteTodo
+			found := CompleteTodo(tt.todos, tt.id)
+
+			// TODO 2: 驗證 bool 回傳值
+			if found != tt.wantFound {
+				t.Errorf("expected %t, got %t", tt.wantFound, found)
+			}
+
+			// TODO 3: 使用 slices.Equal
+			// 驗證 tt.todos 與 tt.want
+			if !slices.Equal(tt.todos, tt.want) {
+				t.Errorf("expected %+v, got %+v", tt.want, tt.todos)
+			}
+		})
+	}
+}
