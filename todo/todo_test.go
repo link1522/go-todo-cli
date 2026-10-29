@@ -283,3 +283,54 @@ func TestCompleteTodo(t *testing.T) {
 		})
 	}
 }
+
+func TestGetNextID(t *testing.T) {
+	tests := []struct {
+		name  string
+		todos []Todo
+		want  int
+	}{
+		{
+			name:  "empty todos",
+			todos: []Todo{},
+			want:  1,
+		},
+		{
+			name: "consecutive IDs",
+			todos: []Todo{
+				{ID: 1, Title: "A"},
+				{ID: 2, Title: "B"},
+				{ID: 3, Title: "C"},
+			},
+			want: 4,
+		},
+		{
+			name: "non-consecutive IDs",
+			todos: []Todo{
+				{ID: 1, Title: "A"},
+				{ID: 3, Title: "B"},
+				{ID: 5, Title: "C"},
+			},
+			want: 6,
+		},
+		{
+			name: "random order todos",
+			todos: []Todo{
+				{ID: 8, Title: "A"},
+				{ID: 2, Title: "B"},
+				{ID: 5, Title: "C"},
+			},
+			want: 9,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			nextID := GetNextID(tt.todos)
+
+			if nextID != tt.want {
+				t.Errorf("expected %d, got %d", tt.want, nextID)
+			}
+		})
+	}
+}
