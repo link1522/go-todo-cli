@@ -168,7 +168,50 @@ func TestDeleteTodo_MutatesInput(t *testing.T) {
 
 	_, found := DeleteTodo(todos, 2)
 
-	if found && slices.Equal(todos, before) {
+	if !found {
+		t.Error("expected todo to be found")
+	}
+
+	if slices.Equal(todos, before) {
 		t.Error("expected input slice elements to change")
+	}
+}
+
+func TestDeleteTodo_ClonePreservesOriginal(t *testing.T) {
+	original := []Todo{
+		{ID: 1, Title: "A"},
+		{ID: 2, Title: "B"},
+		{ID: 3, Title: "C"},
+	}
+
+	before := slices.Clone(original)
+
+	// TODO 1:
+	// 複製 original
+	// 將複製結果傳給 DeleteTodo
+	// 刪除 ID = 2
+	// 將回傳結果存入 updated、found
+	updated, found := DeleteTodo(slices.Clone(original), 2)
+
+	// TODO 2:
+	// 驗證 found == true
+	if !found {
+		t.Error("found should be true")
+	}
+
+	// TODO 3:
+	// 驗證 updated 是 [A, C]
+	expectedUpdated := []Todo{
+		{ID: 1, Title: "A"},
+		{ID: 3, Title: "C"},
+	}
+	if !slices.Equal(updated, expectedUpdated) {
+		t.Errorf("expected %+v, got %+v", expectedUpdated, updated)
+	}
+
+	// TODO 4:
+	// 驗證 original 和 before 仍相同
+	if !slices.Equal(original, before) {
+		t.Error("original should be the same with before")
 	}
 }
