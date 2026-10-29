@@ -334,3 +334,77 @@ func TestGetNextID(t *testing.T) {
 		})
 	}
 }
+
+func TestSearchTodos(t *testing.T) {
+	tests := []struct {
+		name    string
+		todos   []Todo
+		keyword string
+		want    []Todo
+	}{
+		{
+			name: "full keyword search",
+			todos: []Todo{
+				{ID: 1, Title: "Apple"},
+				{ID: 2, Title: "Banana"},
+				{ID: 3, Title: "Cake"},
+			},
+			keyword: "Banana",
+			want:    []Todo{{ID: 2, Title: "Banana"}},
+		},
+		{
+			name: "partial keyword search",
+			todos: []Todo{
+				{ID: 1, Title: "Apple"},
+				{ID: 2, Title: "Banana"},
+				{ID: 3, Title: "Cake"},
+			},
+			keyword: "Ban",
+			want:    []Todo{{ID: 2, Title: "Banana"}},
+		},
+		{
+			name: "case insensitive keyword search",
+			todos: []Todo{
+				{ID: 1, Title: "Apple"},
+				{ID: 2, Title: "Banana"},
+				{ID: 3, Title: "Cake"},
+			},
+			keyword: "bAnAnA",
+			want:    []Todo{{ID: 2, Title: "Banana"}},
+		},
+		{
+			name: "not found",
+			todos: []Todo{
+				{ID: 1, Title: "Apple"},
+				{ID: 2, Title: "Banana"},
+				{ID: 3, Title: "Cake"},
+			},
+			keyword: "Juice",
+			want:    []Todo{},
+		},
+		{
+			name: "search empty string",
+			todos: []Todo{
+				{ID: 1, Title: "Apple"},
+				{ID: 2, Title: "Banana"},
+				{ID: 3, Title: "Cake"},
+			},
+			keyword: "",
+			want: []Todo{
+				{ID: 1, Title: "Apple"},
+				{ID: 2, Title: "Banana"},
+				{ID: 3, Title: "Cake"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			found := SearchTodos(tt.todos, tt.keyword)
+
+			if !slices.Equal(found, tt.want) {
+				t.Errorf("expected %+v, got %+v", tt.want, found)
+			}
+		})
+	}
+}
