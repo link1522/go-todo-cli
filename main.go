@@ -13,7 +13,7 @@ import (
 func main() {
 	todos, err := storage.LoadTodos()
 	if err != nil {
-		fmt.Println("todos 記錄載入失敗: ", err)
+		fmt.Println(err)
 		return
 	}
 	nextID := todo.GetNextID(todos)

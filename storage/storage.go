@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"todo-cli/todo"
 )
@@ -15,7 +16,7 @@ func LoadTodos() ([]todo.Todo, error) {
 			return []todo.Todo{}, nil
 		}
 
-		return nil, err
+		return nil, fmt.Errorf("read %s failed: %w", filename, err)
 	}
 
 	var todos []todo.Todo
@@ -23,7 +24,7 @@ func LoadTodos() ([]todo.Todo, error) {
 	err = json.Unmarshal(data, &todos)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parse %s failed: %w", filename, err)
 	}
 
 	return todos, nil
