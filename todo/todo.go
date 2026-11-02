@@ -1,6 +1,9 @@
 package todo
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type Todo struct {
 	ID    int    `json:"id"`
@@ -26,13 +29,13 @@ func CompleteTodo(todos []Todo, id int) bool {
 	return false
 }
 
-func DeleteTodo(todos []Todo, id int) ([]Todo, bool) {
+func DeleteTodo(todos []Todo, id int) ([]Todo, error) {
 	for i, item := range todos {
 		if id == item.ID {
-			return append(todos[:i], todos[i+1:]...), true
+			return append(todos[:i], todos[i+1:]...), nil
 		}
 	}
-	return todos, false
+	return todos, &TodoNotFoundError{ID: id}
 }
 
 func GetNextID(todos []Todo) int {
@@ -58,4 +61,12 @@ func SearchTodos(todos []Todo, keyword string) []Todo {
 	}
 
 	return foundTodos
+}
+
+type TodoNotFoundError struct {
+	ID int
+}
+
+func (e *TodoNotFoundError) Error() string {
+	return fmt.Sprintf("todo with ID %d not found", e.ID)
 }

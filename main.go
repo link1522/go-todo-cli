@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -61,19 +62,27 @@ func main() {
 					fmt.Println("ID 必須是數字")
 					continue
 				}
-				newTodos, success := todo.DeleteTodo(todos, id)
 
-				if success {
-					todos = newTodos
+				newTodos, err := todo.DeleteTodo(todos, id)
+				if err != nil {
+					var notFoundErr *todo.TodoNotFoundError
 
-					if !save(todos) {
-						continue
+					if errors.As(err, &notFoundErr) {
+						fmt.Printf("找不到 Todo，ID: %d\n", notFoundErr.ID)
+					} else {
+						fmt.Println("刪除失敗: ", err)
 					}
 
-					fmt.Println("刪除成功")
-				} else {
-					fmt.Println("找不到此項目")
+					continue
 				}
+
+				todos = newTodos
+
+				if !save(todos) {
+					continue
+				}
+
+				fmt.Println("刪除成功")
 			}
 		case "search":
 			if len(parts) > 1 {

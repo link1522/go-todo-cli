@@ -1,6 +1,7 @@
 package todo
 
 import (
+	"errors"
 	"slices"
 	"testing"
 )
@@ -144,10 +145,22 @@ func TestDeleteTodo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, found := DeleteTodo(tt.todos, tt.deleteID)
+			got, err := DeleteTodo(tt.todos, tt.deleteID)
 
-			if found != tt.wantFound {
-				t.Errorf("expected %t, got %t", tt.wantFound, found)
+			if tt.wantFound {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			} else {
+				var notFoundErr *TodoNotFoundError
+
+				if !errors.As(err, &notFoundErr) {
+					t.Fatalf("expected TodoNotFoundError, got %v", err)
+				}
+
+				if notFoundErr.ID != tt.deleteID {
+					t.Errorf("expected ID %d, got %d", tt.deleteID, notFoundErr.ID)
+				}
 			}
 
 			if !slices.Equal(got, tt.want) {
@@ -166,10 +179,9 @@ func TestDeleteTodo_MutatesInput(t *testing.T) {
 
 	before := slices.Clone(todos)
 
-	_, found := DeleteTodo(todos, 2)
-
-	if !found {
-		t.Error("expected todo to be found")
+	_, err := DeleteTodo(todos, 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 
 	if slices.Equal(todos, before) {
@@ -186,21 +198,12 @@ func TestDeleteTodo_ClonePreservesOriginal(t *testing.T) {
 
 	before := slices.Clone(original)
 
-	// TODO 1:
-	// 複製 original
-	// 將複製結果傳給 DeleteTodo
-	// 刪除 ID = 2
-	// 將回傳結果存入 updated、found
-	updated, found := DeleteTodo(slices.Clone(original), 2)
+	updated, err := DeleteTodo(slices.Clone(original), 2)
 
-	// TODO 2:
-	// 驗證 found == true
-	if !found {
-		t.Error("found should be true")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// TODO 3:
-	// 驗證 updated 是 [A, C]
 	expectedUpdated := []Todo{
 		{ID: 1, Title: "A"},
 		{ID: 3, Title: "C"},
@@ -209,8 +212,6 @@ func TestDeleteTodo_ClonePreservesOriginal(t *testing.T) {
 		t.Errorf("expected %+v, got %+v", expectedUpdated, updated)
 	}
 
-	// TODO 4:
-	// 驗證 original 和 before 仍相同
 	if !slices.Equal(original, before) {
 		t.Error("original should be the same with before")
 	}
@@ -439,5 +440,16 @@ func TestSearchTodos_DoesNotMutateInput(t *testing.T) {
 	// 驗證 original 與 before 相同
 	if !slices.Equal(original, before) {
 		t.Error("original should be the same with before")
+	}
+}
+
+func TestTodoNotFoundError_Error(t *testing.T) {
+	err := &TodoNotFoundError{ID: 999}
+
+	got := err.Error()
+	want := "todo with ID 999 not found"
+
+	if got != want {
+		t.Errorf("expect message: %s, got: %s", want, got)
 	}
 }
