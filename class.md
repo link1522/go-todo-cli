@@ -2,12 +2,12 @@
 
 我的目標不是只學語法，而是透過同一個 Todo 專案逐步學會 Go 的實務開發方式，最後把它從簡單 CLI 演進成具有測試、Service、Repository、SQLite、REST API、Concurrency 與工程化結構的小型 Go Backend 專案。
 
-## 課堂進度紀錄（最後更新：2026-10-29）
+## 課堂進度紀錄（最後更新：2026-11-02）
 
-> **目前狀態：第 1 堂「完整單元測試 + Slice 深入」已完成。**
-> **下次上課直接從第 2 堂「Go Error Handling」／Part 1／Task 01「不要吞掉檔案讀取錯誤」開始。**
-> 第 2 堂的 Task 01 尚未實作；不要重講第 1 堂，也不要假設第 2 堂已完成。
-> 本紀錄用於定位進度；程式碼仍以我下次上傳的最新專案版本為準。
+> **目前狀態：第 1 堂「完整單元測試 + Slice 深入」已完成；第 2 堂「Go Error Handling」已完成 Part 1–4。**
+> **下次上課從第 2 堂／Part 5「Sentinel Error 與 Custom Error 的設計取捨」開始。**
+> 不要重講已完成的 Error、`errors.Is`、`fmt.Errorf("%w")`、`errors.As`、Pointer to Pointer 與 Custom Error 基礎。
+> 本紀錄用於定位進度；程式碼仍以使用者下次提供的最新專案版本為準。
 
 ### 第 1 堂已完成內容
 
@@ -38,54 +38,61 @@
   - 完成 `TestSearchTodos_DoesNotMutateInput`，驗證多筆匹配順序正確、搜尋不修改原始 Slice。
   - 理解目前 `Todo` 為只有值型別欄位的 Struct，搜尋結果的元素複製不與輸入共用元素儲存；未來若包含 Pointer、Map、Slice 欄位，須再考慮淺複製限制。
 
-### 最近一次程式碼與測試狀態
+### 第 2 堂已完成內容
 
-截至 2026-10-29 最近一次上傳的 `todo_test.go`，已包含：
+- **Part 1／Task 01：不要吞掉檔案讀取錯誤**
+  - 將 `storage.LoadTodos()` 改為 `func LoadTodos() ([]todo.Todo, error)`。
+  - 使用 `errors.Is(err, os.ErrNotExist)` 將「檔案不存在」視為首次使用，回傳空 Slice 與 `nil`。
+  - 其他讀取錯誤與 JSON 解析錯誤向上傳遞；`main()` 載入失敗時停止，避免後續操作覆寫資料。
+  - 已驗證三種情境：檔案不存在、合法 JSON、格式錯誤 JSON。
+- **Part 2：Error Wrapping**
+  - 學習 `fmt.Errorf()` 的 `%w` 與 `%v` 差異。
+  - `storage.LoadTodos()` 對讀取錯誤使用 `read todos.json failed: %w`，對 JSON 解析錯誤使用 `parse todos.json failed: %w`。
+  - 理解 `%w` 保留錯誤鏈，因此包裝後仍可使用 `errors.Is()` 判斷原始錯誤。
+  - 理解 `%v` 只格式化錯誤文字，不保留可供 `errors.Is()`／`errors.As()` 遍歷的錯誤鏈。
+- **Part 3：errors.As() 與 Pointer to Pointer**
+  - 學習 `errors.As()` 可沿錯誤鏈尋找指定錯誤型別，並將找到的錯誤指派給目標變數。
+  - 以 `var pathErr *os.PathError` 為例，理解 `pathErr` 是 `*os.PathError`，而 `&pathErr` 是 `**os.PathError`。
+  - 已釐清 `errors.As(err, &notFoundErr)` 需要目標變數的地址，讓 `errors.As()` 能將找到的錯誤指標寫入該變數。
+- **Part 4：Custom Error 與 DeleteTodo 整合**
+  - 建立 `TodoNotFoundError`，包含 `ID int`，並以 Pointer Receiver 實作 `Error() string`。
+  - 理解 Go 的隱式 Interface 實作：型別的方法集合符合 Interface 即自動實作，不需 `implements` 宣告。
+  - 將 `DeleteTodo` 改為 `func DeleteTodo(todos []Todo, id int) ([]Todo, error)`；成功回傳更新後 Slice 與 `nil`，找不到時回傳原 Slice 與 `&TodoNotFoundError{ID: id}`。
+  - `main.go` 使用 `errors.As(err, &notFoundErr)` 取得錯誤中的 Todo ID。
+  - `TestDeleteTodo` 已改為驗證成功時 `err == nil`，失敗時驗證錯誤型別及 ID。
+  - 已討論 Custom Error 的 Pointer Receiver、`*T`／`**T`，以及 Sentinel Error、`Unwrap()` 可以如何與 Custom Error 搭配；Sentinel Error 尚未實作。
 
-- `TestAddTodo`
-- `TestDeleteTodo`
-- `TestDeleteTodo_MutatesInput`
-- `TestDeleteTodo_ClonePreservesOriginal`
-- `TestCompleteTodo`
-- `TestGetNextID`
-- `TestSearchTodos`
-- `TestSearchTodos_DoesNotMutateInput`
+### 最近一次程式碼狀態與待確認事項
 
-第 1 堂結束時，課堂回報 `go test -v ./todo` 與 `go vet ./todo` 已通過；當時在臨時副本以 Go 1.23.2 驗證，並未修改原始專案。**請在下次上課時重新檢查我實際上傳的檔案**，不要將舊測試結果當成新檔案已經通過。
+最近一次收到的檔案為 `main.go`、`todo.go`、`todo_test.go`；另有先前更新的 `storage.go`。目前可確認：
 
-先前提供的 `go-todo-cli-master.zip` 可能尚未包含後續單獨提交的最新版 `todo_test.go`，因此不能只以舊壓縮檔中的測試檔判斷進度。
+- `storage.LoadTodos()` 回傳 `([]todo.Todo, error)`，使用 `errors.Is` 區分檔案不存在，並以 `%w` 包裝其他讀取錯誤及 JSON 解析錯誤。
+- `todo.DeleteTodo()` 已回傳 `([]Todo, error)`，找不到項目時回傳 `*TodoNotFoundError`。
+- `main.go` 已使用 `errors.As()` 取得 `TodoNotFoundError.ID`。
+- `todo_test.go` 已加入 `errors.As()` 型別與 ID 驗證，並將 Slice 測試改為檢查 `err`。
+- **待清理的小地方：** `TestDeleteTodo_ClonePreservesOriginal` 已先檢查 `err != nil` 並在錯誤時 `t.Fatalf`，後面又對同一個 `err` 呼叫 `errors.As()`；該第二次檢查是冗餘的，可以移除。
+- **測試狀態：** 尚未收到這一版整合後 `go test ./...` 的最新執行結果；不可宣稱最新版本測試已通過。下次可先確認這項小清理與測試結果，不必重講前面課程。
 
-### 下一次開課：第 2 堂／Part 1／Task 01 — 不要吞掉檔案讀取錯誤（尚未完成）
+### 下一次開課：第 2 堂／Part 5 — Sentinel Error 與 Custom Error 的設計取捨
 
-**問題：** 目前 `storage/storage.go` 的 `LoadTodos() []todo.Todo` 在讀取檔案失敗或 JSON 解析失敗時，都回傳空 Slice。這會把首次使用的正常情況與資料損壞、權限等錯誤混為一談；如果後續儲存，可能覆蓋原有資料。
+**下次上課直接從本 Part 開始。** Part 1–4 不需重講。
 
-**目標：** 修改 `LoadTodos` 的簽名為：
+預計討論與實作：
 
-```go
-func LoadTodos() ([]todo.Todo, error)
-```
+1. Sentinel Error 是什麼，以及如何使用 `errors.New()` 定義固定錯誤值。
+2. `errors.Is()` 適合判斷固定錯誤語意的原因。
+3. Custom Error 與 `errors.As()` 適合攜帶、取得結構化錯誤資訊的原因。
+4. Custom Error 是否可以同時支援 `errors.Is()` 與 `errors.As()`。
+5. `Unwrap() error` 如何讓 Custom Error 與 Sentinel Error 建立錯誤鏈關係。
+6. 依 Todo CLI 的「Todo 不存在」情境，評估何時只用 Sentinel Error、何時使用 Custom Error，以及何時兩者搭配。
 
-在 `storage/storage.go` 中：
+**下次開課的思考題（尚未作答）：**
 
-1. 對 `os.ReadFile("todos.json")` 的錯誤進行判斷。
-2. 用 `errors.Is(err, os.ErrNotExist)` 區分檔案不存在：此情況回傳空 Todo Slice 與 `nil` error，視為初次使用。
-3. 其他讀取錯誤應回傳 error，不可默默當作空清單。
-4. `json.Unmarshal` 失敗時回傳 error，不可吞掉 JSON 損壞。
-5. 成功載入時回傳 `todos, nil`。
+假設已有 `var ErrTodoNotFound = errors.New("todo not found")`：
 
-在 `main.go` 中：
-
-1. 調整 `storage.LoadTodos()` 呼叫端以接收 `todos, err`。
-2. 若載入出錯，顯示適當錯誤訊息並終止本次 CLI 執行；不應繼續執行可能覆寫資料的新增／儲存動作。
-3. 暫不修改 `SaveTodos` 與其他 Todo domain 函式。
-
-**教學重點：** Go `error` 回傳值、`nil` error、`errors.Is`、Error Propagation；`errors.New`、`fmt.Errorf("%w")` 與測試錯誤路徑留待後續階段深入。
-
-**驗收：** 檢查 `storage/storage.go` 和 `main.go`，執行 `go test ./...`；請我提供兩份修改後檔案與測試結果，再進行 Code Review。只給必要提示／骨架，不要直接替我寫完整答案。
-
-**思考題（尚未作答）：** 如果 `todos.json` 存在，但 JSON 缺少結尾 `}`，為什麼不能直接回傳空 Slice 並讓應用程式繼續執行？
-
----
+- 需求 A：只需要知道刪除失敗是因為 Todo 不存在，適合使用 `errors.Is()` 還是 `errors.As()`？
+- 需求 B：除了知道 Todo 不存在，還需要取得使用者嘗試刪除的 ID，適合使用哪一種？
+- 如果同時需要判斷錯誤種類及取得 ID，是否有必要讓 Custom Error 實作 `Unwrap()`？為什麼？
 
 目前預計的課程主線如下：
 
@@ -100,10 +107,11 @@ func LoadTodos() ([]todo.Todo, error)
    - slice mutation
 
 2. Go Error Handling
-   - error
-   - errors.Is
-   - errors.New
-   - fmt.Errorf("%w")
+   - error、Error Propagation
+   - errors.Is、errors.As
+   - errors.New、Sentinel Error
+   - fmt.Errorf("%w")、Error Wrapping、Unwrap
+   - Custom Error 與自訂錯誤型別
    - 正確處理檔案不存在、JSON 損壞、IO error
 
 3. Struct 與 Method
@@ -235,8 +243,8 @@ func LoadTodos() ([]todo.Todo, error)
 ## 開課與續課規則
 
 - **有進度紀錄時：** 先閱讀本文「課堂進度紀錄」及當次提供的最新專案內容，從尚未完成的任務接續。
-- **本次指定續課位置：** 第 2 堂「Go Error Handling」／Part 1／Task 01「不要吞掉檔案讀取錯誤」。第 1 堂已完成，不要重講或要求重做其 Task 04–08。
-- **開課第一步：** 檢查最新 `storage/storage.go`、`main.go` 及相關測試，確認是否仍採用舊版 `LoadTodos() []todo.Todo`，再依實際狀態安排 Task 01；不依進度紀錄猜測新上傳檔案。
-- **Task 01 完成後：** 先 Code Review 和驗證錯誤路徑，再循序學習 `errors.New`、`fmt.Errorf("%w")`、錯誤處理測試等；一次只給一個合理大小的任務。
+- **本次指定續課位置：** 第 2 堂「Go Error Handling」／Part 5「Sentinel Error 與 Custom Error 的設計取捨」。第 1 堂及第 2 堂 Part 1–4 已完成，不要重講或要求重做。
+- **開課第一步：** 從第 2 堂 Part 5 開始。先依當次最新檔案做必要的狀態確認；若尚未移除 `TestDeleteTodo_ClonePreservesOriginal` 中冗餘的 `errors.As()` 檢查，提醒清理並確認 `go test ./...` 結果，但不要因此重講 Part 1–4。
+- **Part 5 開始後：** 先釐清 Sentinel Error、Custom Error、`errors.Is()`、`errors.As()` 與 `Unwrap()` 的設計取捨，再以 Todo CLI 為情境安排一個合理大小的實作任務；一次只給一個任務。
 - **若未來沒有任何進度紀錄：** 才從「第 1 堂：完整單元測試 + Slice 深入」開始，檢查專案結構並指定第一個小任務。
 - 永遠以當次提供的專案內容為準，不要一次提供整堂課的完成版程式碼。
