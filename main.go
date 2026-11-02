@@ -11,7 +11,11 @@ import (
 )
 
 func main() {
-	todos := storage.LoadTodos()
+	todos, err := storage.LoadTodos()
+	if err != nil {
+		fmt.Println("todos 記錄載入失敗: ", err)
+		return
+	}
 	nextID := todo.GetNextID(todos)
 
 	scanner := bufio.NewScanner(os.Stdin)

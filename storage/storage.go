@@ -2,14 +2,20 @@ package storage
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"todo-cli/todo"
 )
 
-func LoadTodos() []todo.Todo {
-	data, err := os.ReadFile("todos.json")
+func LoadTodos() ([]todo.Todo, error) {
+	filename := "todos.json"
+	data, err := os.ReadFile(filename)
 	if err != nil {
-		return []todo.Todo{}
+		if errors.Is(err, os.ErrNotExist) {
+			return []todo.Todo{}, nil
+		}
+
+		return nil, err
 	}
 
 	var todos []todo.Todo
@@ -17,10 +23,10 @@ func LoadTodos() []todo.Todo {
 	err = json.Unmarshal(data, &todos)
 
 	if err != nil {
-		return []todo.Todo{}
+		return nil, err
 	}
 
-	return todos
+	return todos, nil
 }
 
 func SaveTodos(todos []todo.Todo) error {
