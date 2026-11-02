@@ -97,6 +97,10 @@ func main() {
 			fmt.Println("Bye!")
 			return
 		}
+
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintln(os.Stderr, "讀取輸入失敗: ", err)
+		}
 	}
 }
 
