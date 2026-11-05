@@ -1,6 +1,9 @@
 package todo
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestTodoService_NextID(t *testing.T) {
 	initial := []Todo{
@@ -57,5 +60,54 @@ func TestTodoService_ListNotModifyTodos(t *testing.T) {
 
 	if list2[0].ID != 7 {
 		t.Error("list should not modify todos in service")
+	}
+}
+
+func TestTodoService_Complete(t *testing.T) {
+	service := NewService([]Todo{{ID: 1, Title: "aaaa"}})
+	err := service.Complete(1)
+
+	if err != nil {
+		t.Fatalf("got error %v", err)
+	}
+
+	list := service.List()
+
+	if !list[0].Done {
+		t.Error("todo should be done")
+	}
+}
+
+func TestTodoService_CompleteNotFound(t *testing.T) {
+	service := NewService([]Todo{{ID: 1, Title: "aaaa"}})
+	completeId := 99
+	err := service.Complete(completeId)
+
+	if !errors.Is(err, ErrTodoNotFound) {
+		t.Errorf("expected %v, got %v", ErrTodoNotFound, err)
+	}
+
+	var notFoundErr *TodoNotFoundError
+	if !errors.As(err, &notFoundErr) {
+		t.Fatalf("expected %v, got %v", notFoundErr, err)
+	}
+
+	if notFoundErr.ID != completeId {
+		t.Errorf("expected %d, got %d", completeId, notFoundErr.ID)
+	}
+}
+
+func TestTodoService_CompleteAlreadyDone(t *testing.T) {
+	service := NewService([]Todo{{ID: 1, Title: "aaaa", Done: true}})
+	err := service.Complete(1)
+
+	if err != nil {
+		t.Fatalf("got error %v", err)
+	}
+
+	list := service.List()
+
+	if !list[0].Done {
+		t.Error("todo should be done")
 	}
 }

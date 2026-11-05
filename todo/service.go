@@ -20,3 +20,11 @@ func (s *Service) Add(title string) Todo {
 func (s *Service) List() []Todo {
 	return slices.Clone(s.todos)
 }
+
+func (s *Service) Complete(id int) error {
+	found := CompleteTodo(s.todos, id)
+	if !found {
+		return &TodoNotFoundError{ID: id}
+	}
+	return nil
+}
