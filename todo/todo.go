@@ -16,6 +16,12 @@ func (todo *Todo) MarkDone() {
 	todo.Done = true
 }
 
+func (todo *Todo) Matches(keyword string) bool {
+	keyword = strings.ToLower(keyword)
+	title := strings.ToLower(todo.Title)
+	return strings.Contains(title, keyword)
+}
+
 func NewTodo(id int, title string) Todo {
 	return Todo{
 		ID:    id,
@@ -59,12 +65,9 @@ func GetNextID(todos []Todo) int {
 
 func SearchTodos(todos []Todo, keyword string) []Todo {
 	foundTodos := []Todo{}
-	keyword = strings.ToLower(keyword)
 
 	for _, item := range todos {
-		title := strings.ToLower(item.Title)
-
-		if strings.Contains(title, keyword) {
+		if item.Matches(keyword) {
 			foundTodos = append(foundTodos, item)
 		}
 	}

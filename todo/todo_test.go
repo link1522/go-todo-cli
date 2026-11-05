@@ -523,3 +523,30 @@ func TestNewTodo(t *testing.T) {
 		t.Error("todo.Done must be false")
 	}
 }
+
+func TestTodo_Matches(t *testing.T) {
+	todo := Todo{
+		ID:    1,
+		Title: "Learn Go",
+	}
+
+	if !todo.Matches("Learn Go") {
+		t.Error("'Learn Go' must be matched")
+	}
+
+	if !todo.Matches("Learn") {
+		t.Error("'Learn' must be matched")
+	}
+
+	if !todo.Matches("LEARN") {
+		t.Error("'LEARN' must be matched")
+	}
+
+	if todo.Matches("Python") {
+		t.Error("'Python' must not be matched")
+	}
+
+	if !todo.Matches("") {
+		t.Error("''(empty string) must be matched")
+	}
+}
