@@ -2,6 +2,7 @@ package todo
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 )
@@ -453,6 +454,25 @@ func TestTodoNotFoundError(t *testing.T) {
 
 	var notFoundErr *TodoNotFoundError
 	if !errors.As(err, &notFoundErr) {
+		t.Fatal("error must be TodoNotFoundError")
+	}
+
+	if notFoundErr.ID != deleteID {
+		t.Errorf("delete id must be %d", deleteID)
+	}
+}
+
+func TestTodoNotFoundErrorWrapped(t *testing.T) {
+	deleteID := 99
+	_, err := DeleteTodo([]Todo{}, deleteID)
+	wrappedErr := fmt.Errorf("delete operation failed: %w", err)
+
+	if !errors.Is(wrappedErr, ErrTodoNotFound) {
+		t.Error("error must be ErrTodoNotFound")
+	}
+
+	var notFoundErr *TodoNotFoundError
+	if !errors.As(wrappedErr, &notFoundErr) {
 		t.Fatal("error must be TodoNotFoundError")
 	}
 
