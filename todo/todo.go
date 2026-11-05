@@ -16,12 +16,16 @@ func (todo *Todo) MarkDone() {
 	todo.Done = true
 }
 
-func AddTodo(todos []Todo, title string, id int) []Todo {
-	return append(todos, Todo{
+func NewTodo(id int, title string) Todo {
+	return Todo{
 		ID:    id,
 		Title: title,
 		Done:  false,
-	})
+	}
+}
+
+func AddTodo(todos []Todo, title string, id int) []Todo {
+	return append(todos, NewTodo(id, title))
 }
 
 func CompleteTodo(todos []Todo, id int) bool {

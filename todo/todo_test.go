@@ -505,3 +505,21 @@ func TestTodo_MarkDone(t *testing.T) {
 		t.Error("todo must be marked done")
 	}
 }
+
+func TestNewTodo(t *testing.T) {
+	id := 1
+	title := "test"
+	todo := NewTodo(id, title)
+
+	if todo.ID != id {
+		t.Errorf("expected ID: %d, got %d", id, todo.ID)
+	}
+
+	if todo.Title != title {
+		t.Errorf("expected title: %s, got %s", title, todo.Title)
+	}
+
+	if todo.Done {
+		t.Error("todo.Done must be false")
+	}
+}
