@@ -12,6 +12,10 @@ type Todo struct {
 	Done  bool   `json:"done"`
 }
 
+func (todo *Todo) MarkDone() {
+	todo.Done = true
+}
+
 func AddTodo(todos []Todo, title string, id int) []Todo {
 	return append(todos, Todo{
 		ID:    id,
@@ -23,7 +27,7 @@ func AddTodo(todos []Todo, title string, id int) []Todo {
 func CompleteTodo(todos []Todo, id int) bool {
 	for i, item := range todos {
 		if id == item.ID {
-			todos[i].Done = true
+			todos[i].MarkDone()
 			return true
 		}
 	}

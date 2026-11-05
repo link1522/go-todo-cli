@@ -491,3 +491,17 @@ func TestTodoNotFoundErrorWrapped(t *testing.T) {
 		t.Errorf("delete id must be %d", deleteID)
 	}
 }
+
+func TestTodo_MarkDone(t *testing.T) {
+	todo := Todo{
+		ID:    1,
+		Title: "test",
+		Done:  false,
+	}
+
+	todo.MarkDone()
+
+	if !todo.Done {
+		t.Error("todo must be marked done")
+	}
+}
