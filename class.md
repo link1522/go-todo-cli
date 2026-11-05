@@ -2,12 +2,12 @@
 
 我的目標不是只學語法，而是透過同一個 Todo 專案逐步學會 Go 的實務開發方式，最後把它從簡單 CLI 演進成具有測試、Service、Repository、SQLite、REST API、Concurrency 與工程化結構的小型 Go Backend 專案。
 
-## 課堂進度紀錄（最後更新：2026-11-02）
+## 課堂進度紀錄（最後更新：2026-11-05）
 
-> **目前狀態：第 1 堂「完整單元測試 + Slice 深入」已完成；第 2 堂「Go Error Handling」已完成 Part 1–4。**
-> **下次上課從第 2 堂／Part 5「Sentinel Error 與 Custom Error 的設計取捨」開始。**
-> 不要重講已完成的 Error、`errors.Is`、`fmt.Errorf("%w")`、`errors.As`、Pointer to Pointer 與 Custom Error 基礎。
-> 本紀錄用於定位進度；程式碼仍以使用者下次提供的最新專案版本為準。
+> **目前狀態：第 1 堂「完整單元測試 + Slice 深入」、第 2 堂「Go Error Handling」、第 3 堂「Struct 與 Method／Todo Service 基礎」均已完成。**
+> **下次上課直接開始第 4 堂「Interface 與 Dependency Injection」／Part 1／Task 16「第一個 Interface」。**
+> 第 4 堂尚未開始實作；不要重新布置或重講 Task 01–15 的內容。可在新課程必要時短暫回顧既有程式的關鍵 API。
+> **任何進度及驗收結論都以當次使用者實際提供的最新專案內容為準；以下是續課定位，不代表新版本已自動整合。**
 
 ### 第 1 堂已完成內容
 
@@ -60,39 +60,74 @@
   - 將 `DeleteTodo` 改為 `func DeleteTodo(todos []Todo, id int) ([]Todo, error)`；成功回傳更新後 Slice 與 `nil`，找不到時回傳原 Slice 與 `&TodoNotFoundError{ID: id}`。
   - `main.go` 使用 `errors.As(err, &notFoundErr)` 取得錯誤中的 Todo ID。
   - `TestDeleteTodo` 已改為驗證成功時 `err == nil`，失敗時驗證錯誤型別及 ID。
-  - 已討論 Custom Error 的 Pointer Receiver、`*T`／`**T`，以及 Sentinel Error、`Unwrap()` 可以如何與 Custom Error 搭配；Sentinel Error 尚未實作。
+  - 已討論 Custom Error 的 Pointer Receiver、`*T`／`**T`，並以 Part 5 延伸到 Sentinel Error 與 `Unwrap()`。
 
-### 最近一次程式碼狀態與待確認事項
+### 第 2 堂／Part 5 已完成內容（Task 09）
 
-最近一次收到的檔案為 `main.go`、`todo.go`、`todo_test.go`；另有先前更新的 `storage.go`。目前可確認：
+- 定義固定錯誤值：`var ErrTodoNotFound = errors.New("todo not found")`。
+- `TodoNotFoundError` 保留 `ID`、實作 `Error() string`，並透過 `Unwrap() error` 回傳 `ErrTodoNotFound`。
+- 使用 `errors.Is()` 判斷「找不到 Todo」的錯誤語意；使用 `errors.As()` 取得 `*TodoNotFoundError` 與 ID。
+- 使用 `fmt.Errorf("...: %w", err)` 包裝錯誤後，驗證 `errors.Is`／`errors.As` 仍能沿錯誤鏈工作；理解 `%v` 不保留錯誤鏈。
+- 完成 `TestTodoNotFoundError_Error`、`TestTodoNotFoundError`、`TestTodoNotFoundErrorWrapped`。
+- 已修正 `errors.As` 失敗後必須使用 `t.Fatal`／`t.Fatalf`，以免後續解參照 nil pointer 的測試風險。
 
-- `storage.LoadTodos()` 回傳 `([]todo.Todo, error)`，使用 `errors.Is` 區分檔案不存在，並以 `%w` 包裝其他讀取錯誤及 JSON 解析錯誤。
-- `todo.DeleteTodo()` 已回傳 `([]Todo, error)`，找不到項目時回傳 `*TodoNotFoundError`。
-- `main.go` 已使用 `errors.As()` 取得 `TodoNotFoundError.ID`。
-- `todo_test.go` 已加入 `errors.As()` 型別與 ID 驗證，並將 Slice 測試改為檢查 `err`。
-- **待清理的小地方：** `TestDeleteTodo_ClonePreservesOriginal` 已先檢查 `err != nil` 並在錯誤時 `t.Fatalf`，後面又對同一個 `err` 呼叫 `errors.As()`；該第二次檢查是冗餘的，可以移除。
-- **測試狀態：** 尚未收到這一版整合後 `go test ./...` 的最新執行結果；不可宣稱最新版本測試已通過。下次可先確認這項小清理與測試結果，不必重講前面課程。
+### 第 3 堂已完成內容（Task 10–15）
 
-### 下一次開課：第 2 堂／Part 5 — Sentinel Error 與 Custom Error 的設計取捨
+- **Part 1／Task 10：Method 與 Pointer Receiver**
+  - 在 `Todo` 上新增 `(todo *Todo) MarkDone()`，修改原始 `Done` 欄位。
+  - `CompleteTodo()` 改成 `todos[i].MarkDone()`；理解 `range` 的 `item` 是值複製，不能藉由 `item.MarkDone()` 修改原始 Slice 元素。
+  - 完成 `TestTodo_MarkDone`，既有 `CompleteTodo` 測試保留。
+- **Part 2／Task 11：Zero Value 與 Constructor Pattern**
+  - 新增 `NewTodo(id int, title string) Todo`，預設 `Done == false`；`AddTodo` 改用 `NewTodo`。
+  - 完成 `TestNewTodo`，理解 `bool` 的零值為 `false`，也理解 Go 不要求所有 Struct 必須有 Constructor。
+- **Part 3／Task 12：Value Receiver**
+  - 新增 `(todo Todo) Matches(keyword string) bool`，以 `strings.ToLower`／`strings.Contains` 實作不區分大小寫搜尋。
+  - `SearchTodos()` 改為呼叫 `item.Matches(keyword)`，保持原本搜尋結果與順序；空關鍵字仍視為匹配全部。
+  - 完成 `TestTodo_Matches`，理解 Value Receiver 的值複製，以及 Receiver 類型一致性與 Method Set 之後仍需深入學習。
+- **Part 4／Task 13：Service 與 Slice Ownership**
+  - 新增 `todo/service.go`，包含 `Service{todos []Todo}`、`NewService(initial []Todo) *Service`、`Add(title string) Todo`、`List() []Todo`。
+  - `NewService` 與 `List` 使用 `slices.Clone` 隔離呼叫端與 Service 的元素儲存空間；理解淺複製限制。
+  - `Add` 使用 `GetNextID`、`NewTodo` 並更新 `s.todos`；測試涵蓋新增 ID、初始 Slice 隔離、List 回傳值隔離。
+- **Part 5／Task 14：Service.Complete 與 Error Propagation**
+  - 新增 `(s *Service) Complete(id int) error`，重用 `CompleteTodo`；存在時回傳 `nil`，不存在時回傳 `&TodoNotFoundError{ID: id}`。
+  - 驗證完成成功、找不到 Todo 時 `errors.Is`／`errors.As`、重複完成等情境。
+  - 已改善 `t.Fatalf` 的安全檢查、成功案例的 `err == nil` 驗證，以及 `Add` 實際寫入與長度的檢查。
+- **Part 6／Task 15：Service.Delete 與 Service.Search**
+  - 新增 `(s *Service) Delete(id int) error`，呼叫 `DeleteTodo`，成功時將更新後的 Slice Header 指派回 `s.todos`；錯誤時直接傳遞，不更新狀態。
+  - 新增 `(s *Service) Search(keyword string) []Todo`，重用 `SearchTodos(s.todos, keyword)`，沿用大小寫不敏感、順序不變等搜尋契約。
+  - 測試涵蓋刪除成功、刪除不存在的 ID／錯誤資訊／狀態不變，以及完整、部分、大小寫不敏感、無結果搜尋。
+  - 最近一次 Code Review 判定 Task 15 核心功能通過；曾在暫存副本額外驗證搜尋結果 Ownership 與空關鍵字搜尋，兩項皆通過，但未必已寫入使用者的正式測試檔。
 
-**下次上課直接從本 Part 開始。** Part 1–4 不需重講。
+### 最近一次專案狀態與整合注意事項
 
-預計討論與實作：
+- **最近提供的檔案**：`service.go`、`service_test.go`；先前另有新版 `todo.go`、`todo_test.go`。最初上傳的 `go-todo-cli.zip` 是較早的快照，未必含最新的 Service 檔案。下次以使用者當次提供的完整專案或最新檔案為準，不能直接假設 ZIP 已同步更新。
+- 目前最後提交的 Service API：`NewService`、`Add`、`List`、`Complete`、`Delete`、`Search`。`Service` 的 `todos` 是未匯出欄位，`List` 回傳 Clone；`Search` 依賴現有 `SearchTodos` 建立獨立結果 Slice。
+- Todo Domain：`Todo` 含 `ID`、`Title`、`Done`；已提供 `MarkDone`、`Matches`、`NewTodo`、`AddTodo`、`CompleteTodo`、`DeleteTodo`、`GetNextID`、`SearchTodos`、`ErrTodoNotFound`、`TodoNotFoundError`。
+- **歷史測試紀錄**：最近一次對 Task 15 的審查，在整合暫存副本中排除舊版 `todo_test.go` 的重複 Service 測試後，`go test -count=1 ./...` 與 `go vet ./...` 通過。當時使用 Go 1.23.2，僅在暫存副本調整 `go.mod` 版本要求；原專案指定 Go 1.25.5，未在該版本驗證。這是過去的驗收結果，**不是對下次新上傳版本的保證**。
+- **非阻擋事項**：確認本機 `todo_test.go` 已移除搬至 `service_test.go` 的三個同名 Service 測試，避免重複宣告；可在適當時機補上正式的 Search Ownership 測試，並以 `gofmt` 統一格式。不需因這些小清理倒退重講第 3 堂。
 
-1. Sentinel Error 是什麼，以及如何使用 `errors.New()` 定義固定錯誤值。
-2. `errors.Is()` 適合判斷固定錯誤語意的原因。
-3. Custom Error 與 `errors.As()` 適合攜帶、取得結構化錯誤資訊的原因。
-4. Custom Error 是否可以同時支援 `errors.Is()` 與 `errors.As()`。
-5. `Unwrap() error` 如何讓 Custom Error 與 Sentinel Error 建立錯誤鏈關係。
-6. 依 Todo CLI 的「Todo 不存在」情境，評估何時只用 Sentinel Error、何時使用 Custom Error，以及何時兩者搭配。
+### 下一次開課：第 4 堂／Part 1 — Interface 與 Dependency Injection（Task 16）
 
-**下次開課的思考題（尚未作答）：**
+**下次上課直接從第 4 堂 Part 1 開始。** 第 1–3 堂都已完成，Task 16 尚未提交任何實作。
 
-假設已有 `var ErrTodoNotFound = errors.New("todo not found")`：
+1. 先根據當次實際提供的最新專案，確認 `Service.List() []Todo` 存在，以及 Service 使用 Pointer Receiver；僅做必要的狀態檢查。
+2. 用目前的 Todo Service 解釋 Interface 描述行為契約、隱式實作、small interface 與 Method Set，不需要先引入 Repository／資料庫。
+3. **Task 16：新增 `todo/stats.go`、`todo/stats_test.go`**，定義：
 
-- 需求 A：只需要知道刪除失敗是因為 Todo 不存在，適合使用 `errors.Is()` 還是 `errors.As()`？
-- 需求 B：除了知道 Todo 不存在，還需要取得使用者嘗試刪除的 ID，適合使用哪一種？
-- 如果同時需要判斷錯誤種類及取得 ID，是否有必要讓 Custom Error 實作 `Unwrap()`？為什麼？
+   ```go
+   type TodoReader interface {
+       List() []Todo
+   }
+
+   func CountPending(reader TodoReader) int {
+       // TODO: 回傳 Done == false 的 Todo 數量
+   }
+   ```
+
+4. 要讓學員自行實作 `CountPending`，測試至少涵蓋：使用真實 `*Service`；建立有 `List() []Todo` 的 Fake Reader；使用 Fake Reader 計算；空集合回傳 0。
+5. 思考題：若 `List()` 定義為 `(s *Service) List() []Todo`，`var reader TodoReader = &Service{}` 可以成立，但 `var reader TodoReader = Service{}` 不成立；以 Method Set 解釋原因。
+6. 按照既有節奏「問題 → 原因 → Go 概念 → 實作」安排一個適中任務，不要直接提供整份 `stats.go` 與 `stats_test.go` 的完成答案。待使用者提交後，再作 Code Review。
+7. 第 4 堂後續方向依序為 Interface / Implicit Implementation / Method Set / Dependency Injection，再考慮小型 Repository Pattern、`TodoRepository`、`JSONRepository`；不要在 Task 16 提前整套實作。
 
 目前預計的課程主線如下：
 
@@ -242,9 +277,11 @@
 
 ## 開課與續課規則
 
-- **有進度紀錄時：** 先閱讀本文「課堂進度紀錄」及當次提供的最新專案內容，從尚未完成的任務接續。
-- **本次指定續課位置：** 第 2 堂「Go Error Handling」／Part 5「Sentinel Error 與 Custom Error 的設計取捨」。第 1 堂及第 2 堂 Part 1–4 已完成，不要重講或要求重做。
-- **開課第一步：** 從第 2 堂 Part 5 開始。先依當次最新檔案做必要的狀態確認；若尚未移除 `TestDeleteTodo_ClonePreservesOriginal` 中冗餘的 `errors.As()` 檢查，提醒清理並確認 `go test ./...` 結果，但不要因此重講 Part 1–4。
-- **Part 5 開始後：** 先釐清 Sentinel Error、Custom Error、`errors.Is()`、`errors.As()` 與 `Unwrap()` 的設計取捨，再以 Todo CLI 為情境安排一個合理大小的實作任務；一次只給一個任務。
-- **若未來沒有任何進度紀錄：** 才從「第 1 堂：完整單元測試 + Slice 深入」開始，檢查專案結構並指定第一個小任務。
-- 永遠以當次提供的專案內容為準，不要一次提供整堂課的完成版程式碼。
+- **有進度紀錄時：** 先閱讀本文「課堂進度紀錄」及使用者當次提供的最新專案內容，從尚未完成的任務接續；不要直接假設先前檔案仍是最新版本。
+- **本次指定續課位置：** **第 4 堂「Interface 與 Dependency Injection」／Part 1／Task 16「第一個 Interface」**。第 1、2、3 堂及 Task 01–15 已完成，不重新授課或要求重做。
+- **開課第一步：** 確認當次專案的 `Service.List() []Todo`、`Service` Receiver 和相關測試；如果遇到歷史快照與新檔案不一致，說明差異，必要時以最新檔案為準。
+- **接著開始 Task 16：** 解釋 `TodoReader` 小介面與 `*Service` 的隱式實作；安排 `stats.go`／`stats_test.go` 的 `CountPending` 與 Fake Reader 練習。實作由學員完成，提交後再驗收。
+- **不得提前跳到 Repository／SQLite：** 先完成 Interface、Method Set、基本 Dependency Injection 的學習；維持每次只進行一個適中任務。
+- **舊版整合提示：** 如因 `todo_test.go`、`service_test.go` 含同名測試導致編譯失敗，提醒刪除舊版重複測試，而不是要求重新完成已通過的 Service 設計；曾有 CRLF／gofmt 格式差異。
+- **若未來沒有任何進度紀錄：** 才從「第 1 堂：完整單元測試 + Slice 深入」開始。
+- 永遠以當次提供的專案內容為準，保留循序漸進的教學節奏，不要一次提供整堂課的完成版程式碼。
