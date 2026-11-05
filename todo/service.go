@@ -28,3 +28,16 @@ func (s *Service) Complete(id int) error {
 	}
 	return nil
 }
+
+func (s *Service) Delete(id int) error {
+	updated, err := DeleteTodo(s.todos, id)
+	if err != nil {
+		return err
+	}
+	s.todos = updated
+	return nil
+}
+
+func (s *Service) Search(keyword string) []Todo {
+	return SearchTodos(s.todos, keyword)
+}
