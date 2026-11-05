@@ -443,13 +443,20 @@ func TestSearchTodos_DoesNotMutateInput(t *testing.T) {
 	}
 }
 
-func TestTodoNotFoundError_Error(t *testing.T) {
-	err := &TodoNotFoundError{ID: 999}
+func TestTodoNotFoundError(t *testing.T) {
+	deleteID := 99
+	_, err := DeleteTodo([]Todo{}, deleteID)
 
-	got := err.Error()
-	want := "todo with ID 999 not found"
+	if !errors.Is(err, ErrTodoNotFound) {
+		t.Error("error must be ErrTodoNotFound")
+	}
 
-	if got != want {
-		t.Errorf("expect message: %s, got: %s", want, got)
+	var notFoundErr *TodoNotFoundError
+	if !errors.As(err, &notFoundErr) {
+		t.Fatal("error must be TodoNotFoundError")
+	}
+
+	if notFoundErr.ID != deleteID {
+		t.Errorf("delete id must be %d", deleteID)
 	}
 }

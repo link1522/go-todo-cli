@@ -1,6 +1,7 @@
 package todo
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -63,10 +64,16 @@ func SearchTodos(todos []Todo, keyword string) []Todo {
 	return foundTodos
 }
 
+var ErrTodoNotFound = errors.New("todo not found")
+
 type TodoNotFoundError struct {
 	ID int
 }
 
 func (e *TodoNotFoundError) Error() string {
 	return fmt.Sprintf("todo with ID %d not found", e.ID)
+}
+
+func (e *TodoNotFoundError) Unwrap() error {
+	return ErrTodoNotFound
 }
