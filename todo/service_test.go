@@ -329,6 +329,12 @@ func TestTodoService_MissRepo(t *testing.T) {
 	if err == nil {
 		t.Error("expected error when missing repository")
 	}
+
+	_, err = service.AddAndSave("cccc")
+
+	if err == nil {
+		t.Error("expected error when missing repository")
+	}
 }
 
 func TestTodoService_ModifyLoadedTodos(t *testing.T) {
@@ -348,5 +354,93 @@ func TestTodoService_ModifyLoadedTodos(t *testing.T) {
 	got := service.List()
 	if !slices.Equal(initTodos, got) {
 		t.Errorf("expected %v, got %v", initTodos, got)
+	}
+}
+
+func TestTodoService_AddAndSave(t *testing.T) {
+	initTodos := []Todo{
+		{ID: 1, Title: "aaaa"},
+		{ID: 2, Title: "bbbb"},
+	}
+	fakeRepo := fakeRepository{todos: initTodos}
+	service, err := NewServiceWithRepository(&fakeRepo)
+	if err != nil {
+		t.Fatalf("got error: %v", err)
+	}
+
+	newTodo, err := service.AddAndSave("cccc")
+
+	wanted := append(slices.Clone(initTodos), newTodo)
+	got := service.List()
+
+	if !slices.Equal(wanted, got) {
+		t.Errorf("expected %v, got %v", wanted, got)
+	}
+
+	gotByRepo, err := service.repo.Load()
+	if err != nil {
+		t.Fatalf("got error %v", err)
+	}
+	if !slices.Equal(wanted, gotByRepo) {
+		t.Errorf("expected %v, got %v", wanted, gotByRepo)
+	}
+}
+
+func TestTodoService_AddAndSaveFailed(t *testing.T) {
+	initTodos := []Todo{
+		{ID: 1, Title: "aaaa"},
+		{ID: 2, Title: "bbbb"},
+	}
+	fakeRepo := fakeRepository{
+		todos:     initTodos,
+		saveError: errors.New("save failed"),
+	}
+	service, err := NewServiceWithRepository(&fakeRepo)
+	if err != nil {
+		t.Fatalf("got error: %v", err)
+	}
+
+	_, err = service.AddAndSave("cccc")
+	if err == nil {
+		t.Error("expect got error when saving failed")
+	}
+
+	got := service.List()
+	if !slices.Equal(initTodos, got) {
+		t.Errorf("expected %v, got %v", initTodos, got)
+	}
+
+	gotByRepo, err := service.repo.Load()
+	if err != nil {
+		t.Fatalf("got error %v", err)
+	}
+	if !slices.Equal(initTodos, gotByRepo) {
+		t.Errorf("expected %v, gotByRepo %v", initTodos, gotByRepo)
+	}
+}
+
+func TestTodoService_AddAndSaveOwnership(t *testing.T) {
+	repo := &fakeRepository{
+		todos: []Todo{
+			{ID: 1, Title: "Learn Go"},
+		},
+	}
+
+	service, err := NewServiceWithRepository(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = service.AddAndSave("Learn SQL")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	repo.todos[0].Title = "Modified By Repository"
+
+	got := service.List()
+
+	if got[0].Title != "Learn Go" {
+		t.Errorf("Service data was modified: %s", got[0].Title)
 	}
 }

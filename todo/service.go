@@ -2,6 +2,7 @@ package todo
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 )
 
@@ -68,4 +69,24 @@ func (s *Service) Save() error {
 		return err
 	}
 	return nil
+}
+
+func (s *Service) AddAndSave(title string) (Todo, error) {
+	if s.repo == nil {
+		return Todo{}, errors.New("repository not exists")
+	}
+
+	candidate := slices.Clone(s.todos)
+
+	newTodo := NewTodo(GetNextID(candidate), title)
+	candidate = append(candidate, newTodo)
+
+	err := s.repo.Save(slices.Clone(candidate))
+	if err != nil {
+		return Todo{}, fmt.Errorf("save todos failed: %w", err)
+	}
+
+	s.todos = candidate
+
+	return newTodo, nil
 }
