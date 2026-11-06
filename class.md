@@ -2,11 +2,12 @@
 
 我的目標不是只學語法，而是透過同一個 Todo 專案逐步學會 Go 的實務開發方式，最後把它從簡單 CLI 演進成具有測試、Service、Repository、SQLite、REST API、Concurrency 與工程化結構的小型 Go Backend 專案。
 
-## 課堂進度紀錄（最後更新：2026-11-05）
+## 課堂進度紀錄（最後更新：2026-11-06）
 
-> **目前狀態：第 1 堂「完整單元測試 + Slice 深入」、第 2 堂「Go Error Handling」、第 3 堂「Struct 與 Method／Todo Service 基礎」均已完成。**
-> **下次上課直接開始第 4 堂「Interface 與 Dependency Injection」／Part 1／Task 16「第一個 Interface」。**
-> 第 4 堂尚未開始實作；不要重新布置或重講 Task 01–15 的內容。可在新課程必要時短暫回顧既有程式的關鍵 API。
+> **目前狀態：第 1 堂「完整單元測試 + Slice 深入」、第 2 堂「Go Error Handling」、第 3 堂「Struct 與 Method／Todo Service 基礎」已完成；第 4 堂「Interface 與 Dependency Injection」的 Task 16–20 均已完成驗收。**
+> **下次上課直接從「第 4 堂｜Task 21：資料一致性（Data Consistency）」開始。**
+> Task 21 已講解需求、提供實作方向與思考題，但 **尚未收到 `AddAndSave()` 實作與測試，也尚未回答 Task 21 的思考題**。不要再從 Task 16 開始，亦不要把 Task 21 標記為完成。
+> 可在新課開始時簡短回顧 Task 20 的 `Service`／Repository API，但不要重新布置 Task 01–20。
 > **任何進度及驗收結論都以當次使用者實際提供的最新專案內容為準；以下是續課定位，不代表新版本已自動整合。**
 
 ### 第 1 堂已完成內容
@@ -98,36 +99,75 @@
   - 測試涵蓋刪除成功、刪除不存在的 ID／錯誤資訊／狀態不變，以及完整、部分、大小寫不敏感、無結果搜尋。
   - 最近一次 Code Review 判定 Task 15 核心功能通過；曾在暫存副本額外驗證搜尋結果 Ownership 與空關鍵字搜尋，兩項皆通過，但未必已寫入使用者的正式測試檔。
 
+### 第 4 堂已完成內容（Task 16–20）
+
+- **Part 1／Task 16：第一個 Interface — `TodoReader`**
+  - 在 `todo/stats.go` 定義 `type TodoReader interface { List() []Todo }`，完成 `CountPending(reader TodoReader) int`，統計 `Done == false`。
+  - 在 `todo/stats_test.go` 以真實 `*Service`、Fake Reader、空集合驗證結果；學員已理解 small interface 與 implicit implementation。
+  - 釐清 Method Set：Interface 本身不會定義 Pointer Receiver；現有 `List()` 為 `func (s *Service) List() []Todo`，因此 `*Service` 滿足 `TodoReader`，`Service` 值型別不滿足。
+  - `fakeTodoReader` 改用未匯出名稱，`List()` 回傳 `slices.Clone`。
+- **Part 2／Task 17：Constructor Injection — `StatsService`**
+  - 新增 `StatsService{reader TodoReader}`、`NewStatsService(reader TodoReader) *StatsService`、`PendingCount() int`，後者重用 `CountPending(s.reader)`。
+  - 以真實 `*Service` 和 Fake Reader 測試通過；學員了解依賴 Interface 可降低耦合，且不同實作的初始化方式可不同。
+  - Code Review 建議 Constructor 使用具名欄位 `&StatsService{reader: reader}`，屬風格建議、非必要修正。
+- **Part 3／Task 18：Repository 契約**
+  - 在 `todo/repository.go` 定義：
+
+    ```go
+    type TodoRepository interface {
+        Load() ([]Todo, error)
+        Save(todos []Todo) error
+    }
+    ```
+
+  - 學員理解具體型別只要具有正確 Method Set 就能隱式實作介面；Package-Level Function 不等於某個型別的 Method。
+  - 釐清空集合與 I/O／JSON 解析錯誤是不同情況，因此 Repository 讀取需要回傳 `error`。
+- **Part 3／Task 19：`storage.JSONRepository` 與檔案測試**
+  - 在 `storage` Package 建立 `JSONRepository{path string}`、`NewJSONRepository(path string)`、`Load()`、`Save([]todo.Todo) error`；由 Constructor 注入路徑，保留讀寫 JSON 的責任。
+  - `Load()` 使用 `os.ReadFile`／`json.Unmarshal`；檔案不存在視為空資料，其他錯誤使用 `fmt.Errorf(... %w ...)` 包裝。
+  - `Save()` 使用 `json.Marshal`／`os.WriteFile`；可選改善：寫入錯誤加上檔案路徑上下文。
+  - 測試使用 `t.TempDir()`；已補齊 `Load()` 錯誤檢查及不同檔案路徑隔離驗證：A 儲存、B 儲存後重新讀取 A，確認不被覆寫。Task 19 已正式通過。
+  - 可選的編譯期介面檢查：`var _ todo.TodoRepository = (*JSONRepository)(nil)`；不是必須。
+- **Part 4／Task 20：將 Repository 注入 Todo Service**
+  - 保留舊的 `NewService(initial []Todo)`，新增 `Service.repo TodoRepository`、`NewServiceWithRepository(repo TodoRepository) (*Service, error)`、`(s *Service) Save() error`。
+  - Constructor 對 `nil` Repository 回傳 error；`repo.Load()` 失敗時向上傳遞 error；成功時使用 `slices.Clone(todos)` 建立獨立 Service 狀態。
+  - `Save()` 對無 Repository 的 Service 回傳 error，且現在呼叫 `s.repo.Save(slices.Clone(s.todos))`，避免將內部 Backing Array 暴露給 Repository。
+  - Fake Repository 可模擬 `loadError`、`saveError`；原本測試誤將 `slices.Equal(wanted, got)` 的條件寫反，已修正。
+  - 最後一版測試 Fake Repository 故意以 `return r.todos, nil` 與 `r.todos = todos` 直接共享輸入，以驗證 Service 邊界複製有意義；`service.go` 的 Load／Save 兩側都已使用 Clone。
+  - 全專案既有測試和 `go vet` 通過；審查者在暫存副本額外驗證 Load 後外部修改、Save 後 Service 修改，以及 Repository 在 Save 中修改輸入等情境，均通過；**這些額外測試未必已寫入學員的正式 `service_test.go`**。
+  - 學員正確辨識共享 Backing Array 風險；需維持區分：Fake Repository 的 Slice 指派不是磁碟持久化，隔離成立是因 `slices.Clone`，不是因「已經 Save 就不會再變」。
+  - 目前的 `Add()` 與 `Save()` 是分開的操作；如果 Save 失敗，記憶體狀態仍可能已變動。此一致性議題留到 Task 21。
+  - Task 20 已正式通過，**下次不要重新驗收或要求重做**，除非使用者提交了實質不同的新版本。
+
 ### 最近一次專案狀態與整合注意事項
 
-- **最近提供的檔案**：`service.go`、`service_test.go`；先前另有新版 `todo.go`、`todo_test.go`。最初上傳的 `go-todo-cli.zip` 是較早的快照，未必含最新的 Service 檔案。下次以使用者當次提供的完整專案或最新檔案為準，不能直接假設 ZIP 已同步更新。
-- 目前最後提交的 Service API：`NewService`、`Add`、`List`、`Complete`、`Delete`、`Search`。`Service` 的 `todos` 是未匯出欄位，`List` 回傳 Clone；`Search` 依賴現有 `SearchTodos` 建立獨立結果 Slice。
-- Todo Domain：`Todo` 含 `ID`、`Title`、`Done`；已提供 `MarkDone`、`Matches`、`NewTodo`、`AddTodo`、`CompleteTodo`、`DeleteTodo`、`GetNextID`、`SearchTodos`、`ErrTodoNotFound`、`TodoNotFoundError`。
-- **歷史測試紀錄**：最近一次對 Task 15 的審查，在整合暫存副本中排除舊版 `todo_test.go` 的重複 Service 測試後，`go test -count=1 ./...` 與 `go vet ./...` 通過。當時使用 Go 1.23.2，僅在暫存副本調整 `go.mod` 版本要求；原專案指定 Go 1.25.5，未在該版本驗證。這是過去的驗收結果，**不是對下次新上傳版本的保證**。
-- **非阻擋事項**：確認本機 `todo_test.go` 已移除搬至 `service_test.go` 的三個同名 Service 測試，避免重複宣告；可在適當時機補上正式的 Search Ownership 測試，並以 `gofmt` 統一格式。不需因這些小清理倒退重講第 3 堂。
+- **最新上傳紀錄（2026-11-06）**：最近一輪提交了新版 `/mnt/data/service.go` 和 `/mnt/data/service_test.go`，並通過 Task 20 審查。此前分批提交 `stats.go`、`stats_test.go`、`repository.go`、`JSONRepository.go`、`JSONRepository_test.go`。這些是歷次個別檔案；最初上傳的 `go-todo-cli.zip` 是 2026-11-05 的舊快照，**不能假設已自動同步所有新檔案**。
+- **最新 Service API**：`NewService(initial []Todo)`、`NewServiceWithRepository(repo TodoRepository)`、`Add`、`List`、`Complete`、`Delete`、`Search`、`Save`。Service 包含 `todos []Todo` 與 `repo TodoRepository`；對建構載入的 Slice 及 Save 傳入的 Slice 都做 Clone。
+- **其它新 API**：`TodoReader`、`CountPending`、`StatsService`、`NewStatsService`、`TodoRepository`、`storage.JSONRepository`、`NewJSONRepository`；Package 模組路徑依 `go.mod` 為 `todo-cli`，以當次實際版本為準。
+- **Fake Repository 注意事項**：最後一版測試中的 `fakeRepository.Load()` 直接回傳內部 Slice，`Save()` 直接指派傳入 Slice。這是學員用以測試 Service Ownership 的刻意設計，不能誤判為缺陷；Service 必須自己守住兩側的資料所有權邊界。
+- **尚可補強的測試**：目前正式 `TestTodoService_ModifyLoadedTodos` 主要驗證 `List()` 的回傳值不影響 Service，尚未直接持久記錄「修改 Repo 原始 Slice 不影響 Service」的獨立測試。此項屬非阻擋改善，不要因此否定已通過的 Task 20。
+- **最近驗證結果與限制**：Task 20 最新整合暫存副本中 `go test -count=1 ./...` 與 `go vet ./...` 通過，另外的 Ownership 暫存測試也通過；驗證環境為 Go 1.23.2，需暫時調整副本的 `go.mod` 版本宣告，專案原訂 Go 1.25.5 尚未在該版本驗證。這是歷史紀錄，**不是下次新上傳版本的自動保證**。
+- **仍有的非阻擋建議**：可考慮 `gofmt`、Go 習慣的小寫底線檔名（`json_repository.go`）、`Save()` 的錯誤上下文及更完整的負向測試；不要因此倒退重教 Task 16–20。
 
-### 下一次開課：第 4 堂／Part 1 — Interface 與 Dependency Injection（Task 16）
+### 下一次開課：第 4 堂／Task 21 — 資料一致性（Data Consistency）
 
-**下次上課直接從第 4 堂 Part 1 開始。** 第 1–3 堂都已完成，Task 16 尚未提交任何實作。
+**下次直接從 Task 21 開始，不要重講 Task 16–20。Task 21 尚未實作。** 學員先前的思考方向是「Save 失敗就回復前一狀態」，已引導其思考更容易維護的方案：**先在候選狀態修改 → 儲存候選狀態 → 成功後才提交記憶體狀態**，避免需要回滾已修改的原始狀態。
 
-1. 先根據當次實際提供的最新專案，確認 `Service.List() []Todo` 存在，以及 Service 使用 Pointer Receiver；僅做必要的狀態檢查。
-2. 用目前的 Todo Service 解釋 Interface 描述行為契約、隱式實作、small interface 與 Method Set，不需要先引入 Repository／資料庫。
-3. **Task 16：新增 `todo/stats.go`、`todo/stats_test.go`**，定義：
-
-   ```go
-   type TodoReader interface {
-       List() []Todo
-   }
-
-   func CountPending(reader TodoReader) int {
-       // TODO: 回傳 Done == false 的 Todo 數量
-   }
-   ```
-
-4. 要讓學員自行實作 `CountPending`，測試至少涵蓋：使用真實 `*Service`；建立有 `List() []Todo` 的 Fake Reader；使用 Fake Reader 計算；空集合回傳 0。
-5. 思考題：若 `List()` 定義為 `(s *Service) List() []Todo`，`var reader TodoReader = &Service{}` 可以成立，但 `var reader TodoReader = Service{}` 不成立；以 Method Set 解釋原因。
-6. 按照既有節奏「問題 → 原因 → Go 概念 → 實作」安排一個適中任務，不要直接提供整份 `stats.go` 與 `stats_test.go` 的完成答案。待使用者提交後，再作 Code Review。
-7. 第 4 堂後續方向依序為 Interface / Implicit Implementation / Method Set / Dependency Injection，再考慮小型 Repository Pattern、`TodoRepository`、`JSONRepository`；不要在 Task 16 提前整套實作。
+1. **問題背景**：目前 `service.Add("Learn Go")` 後再呼叫 `service.Save()`；若 Save 失敗，記憶體已有新 Todo，但資料來源可能沒有成功儲存，造成不一致。
+2. **Task 21 實作目標**：在 `todo/service.go` 新增 `func (s *Service) AddAndSave(title string) (Todo, error)`；**保留既有 `Add()`、`Save()` 方法及簽章**，不要在此階段整套重構。
+3. **預計流程**：
+   - 檢查 Repository 是否存在，沒有就回傳 error。
+   - `candidate := slices.Clone(s.todos)` 建立候選資料狀態。
+   - 使用已有的 `GetNextID(candidate)`、`NewTodo`，只把新 Todo 加到候選狀態。
+   - 呼叫 `s.repo.Save(slices.Clone(candidate))`，保護候選狀態不被 Repository 意外修改。
+   - 儲存失敗時回傳 error，不改 `s.todos`；只有儲存成功才以候選狀態更新 `s.todos` 並回傳新 Todo。
+4. **至少需要的測試**：
+   - 成功時新增 Todo，Service 和 Fake Repository 都有新資料。
+   - Fake Repository Save 失敗時 `AddAndSave()` 回傳 error，Service 狀態不變、Repository 原資料不變。
+   - 沒有 Repository 時回傳 error，Service 不變；可額外測試 Repository 故意修改傳入 Slice、原始資料 Ownership。
+5. **重要界線**：上述設計可防止「已知 Save 失敗後仍更新 Service 記憶體」，但不能單靠這個流程保證實際磁碟儲存的原子性、交易性、並發安全或失敗後磁碟資料完全沒有改變。相關檔案安全寫入／資料庫 Transaction 後續再教。
+6. **尚待學員回答的思考題**：**「為什麼『先建立候選狀態 → 儲存成功 → 更新記憶體』通常比『先修改記憶體 → 儲存失敗再 Rollback』更容易維護？」** 下次可先讓學員作答，再檢查實作；不要直接給完整完成答案。
+7. 沿用「問題 → 原因 → Go 概念 → 實作 → 學員提交 → Code Review」的步調，以現有 Todo 專案為唯一實作基礎。先確認新上傳檔案的當前狀態，再安排後續工作。
 
 目前預計的課程主線如下：
 
