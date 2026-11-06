@@ -2,13 +2,12 @@
 
 我的目標不是只學語法，而是透過同一個 Todo 專案逐步學會 Go 的實務開發方式，最後把它從簡單 CLI 演進成具有測試、Service、Repository、SQLite、REST API、Concurrency 與工程化結構的小型 Go Backend 專案。
 
-## 課堂進度紀錄（最後更新：2026-11-06）
+## 課堂進度紀錄（最後更新：2026-11-07）
 
-> **目前狀態：第 1 堂「完整單元測試 + Slice 深入」、第 2 堂「Go Error Handling」、第 3 堂「Struct 與 Method／Todo Service 基礎」已完成；第 4 堂「Interface 與 Dependency Injection」的 Task 16–20 均已完成驗收。**
-> **下次上課直接從「第 4 堂｜Task 21：資料一致性（Data Consistency）」開始。**
-> Task 21 已講解需求、提供實作方向與思考題，但 **尚未收到 `AddAndSave()` 實作與測試，也尚未回答 Task 21 的思考題**。不要再從 Task 16 開始，亦不要把 Task 21 標記為完成。
-> 可在新課開始時簡短回顧 Task 20 的 `Service`／Repository API，但不要重新布置 Task 01–20。
-> **任何進度及驗收結論都以當次使用者實際提供的最新專案內容為準；以下是續課定位，不代表新版本已自動整合。**
+> **目前狀態：第 1 堂「完整單元測試 + Slice 深入」、第 2 堂「Go Error Handling」、第 3 堂「Struct 與 Method／Todo Service 基礎」、第 4 堂「Interface 與 Dependency Injection」均已完成；Task 16–21 均已通過驗收。**
+> **下次上課直接從「第 5 堂：CLI Application」開始。** 不要重講 Task 21、重新布置 Task 01–21，或從第 4 堂開始。
+> 第 5 堂從目前專案的 `main.go` 出發，先理解 CLI 子命令解析與標準輸入／輸出，再逐步改成 `todo add "Learn Go"`、`todo list` 等操作；每次只安排一個適中任務，不直接交付完整成品。
+> **任何進度及驗收結論都以當次使用者實際提供的最新專案內容為準；本檔是續課定位，不代表歷史 ZIP 已自動整合最新提交。**
 
 ### 第 1 堂已完成內容
 
@@ -122,6 +121,7 @@
 
   - 學員理解具體型別只要具有正確 Method Set 就能隱式實作介面；Package-Level Function 不等於某個型別的 Method。
   - 釐清空集合與 I/O／JSON 解析錯誤是不同情況，因此 Repository 讀取需要回傳 `error`。
+
 - **Part 3／Task 19：`storage.JSONRepository` 與檔案測試**
   - 在 `storage` Package 建立 `JSONRepository{path string}`、`NewJSONRepository(path string)`、`Load()`、`Save([]todo.Todo) error`；由 Constructor 注入路徑，保留讀寫 JSON 的責任。
   - `Load()` 使用 `os.ReadFile`／`json.Unmarshal`；檔案不存在視為空資料，其他錯誤使用 `fmt.Errorf(... %w ...)` 包裝。
@@ -139,35 +139,35 @@
   - 目前的 `Add()` 與 `Save()` 是分開的操作；如果 Save 失敗，記憶體狀態仍可能已變動。此一致性議題留到 Task 21。
   - Task 20 已正式通過，**下次不要重新驗收或要求重做**，除非使用者提交了實質不同的新版本。
 
+### 第 4 堂／Task 21 已完成內容 — 資料一致性（Data Consistency）
+
+- **Task 21：`AddAndSave()` 設計與實作已通過驗收。** 在 `todo/service.go` 新增 `func (s *Service) AddAndSave(title string) (Todo, error)`；保留原有 `Add()`、`Save()` 與 `TodoRepository` 介面不變。
+- **流程**：先檢查 Repository → `candidate := slices.Clone(s.todos)` → 使用 `NewTodo(GetNextID(candidate), title)` 建立新 Todo 並加入候選 Slice → `s.repo.Save(slices.Clone(candidate))` → Save 成功後才更新 `s.todos` 並回傳新 Todo。失敗時以 `fmt.Errorf("save todos failed: %w", err)` 保留錯誤鏈，且不提交候選狀態。
+- **測試**：已提交 `TestTodoService_AddAndSave`、`TestTodoService_AddAndSaveFailed`，並在 `TestTodoService_MissRepo` 涵蓋無 Repository 情境；已檢查成功時 Service／Repository 皆含新增 Todo、失敗時兩邊狀態維持原樣，相關測試通過。
+- **Slice Ownership**：學員已能正確說明 `slices.Clone` 的目的，以及 Slice Header 與 Backing Array 的共享問題。Repository 收到 `slices.Clone(candidate)`，因此在目前 `Todo` 欄位為值型別的前提下，Repository 修改自己持有的 Slice 不會直接修改 Service 的資料。
+- **簡化結論**：學員正確回答：將最後的 `s.todos = slices.Clone(candidate)` 改為 `s.todos = candidate` 仍不會造成 Service／Repository 共用 Backing Array；因為傳給 `Save()` 的是另一份 Clone。最後一次 Clone 可省略，前兩個 Clone 應依資料所有權邊界保留。**上傳版本仍使用第三次 Clone；這是安全但冗餘的寫法，不必強迫回頭修改。**
+- **思考題已回答**：學員指出「先修改記憶體再 Save」可能使其他使用者／操作在儲存成功前讀到新資料，甚至儲存失敗後仍讀到未持久化狀態。已補充：候選狀態解決的是失敗後不提交 Service 狀態，**不等同** Mutex／並發安全，也不保證檔案寫入原子性或資料庫交易性。
+- **非阻擋補強**：建議將 `TestTodoService_AddAndSaveOwnership` 正式加入測試，以驗證 Save 成功後修改 `fakeRepository.todos[0]` 不會影響 `service.List()`。課堂已提供此測試範例，但**尚未確認學員已加入正式測試檔**。此項不影響 Task 21 已驗收完成的結論。
+
 ### 最近一次專案狀態與整合注意事項
 
-- **最新上傳紀錄（2026-11-06）**：最近一輪提交了新版 `/mnt/data/service.go` 和 `/mnt/data/service_test.go`，並通過 Task 20 審查。此前分批提交 `stats.go`、`stats_test.go`、`repository.go`、`JSONRepository.go`、`JSONRepository_test.go`。這些是歷次個別檔案；最初上傳的 `go-todo-cli.zip` 是 2026-11-05 的舊快照，**不能假設已自動同步所有新檔案**。
-- **最新 Service API**：`NewService(initial []Todo)`、`NewServiceWithRepository(repo TodoRepository)`、`Add`、`List`、`Complete`、`Delete`、`Search`、`Save`。Service 包含 `todos []Todo` 與 `repo TodoRepository`；對建構載入的 Slice 及 Save 傳入的 Slice 都做 Clone。
-- **其它新 API**：`TodoReader`、`CountPending`、`StatsService`、`NewStatsService`、`TodoRepository`、`storage.JSONRepository`、`NewJSONRepository`；Package 模組路徑依 `go.mod` 為 `todo-cli`，以當次實際版本為準。
-- **Fake Repository 注意事項**：最後一版測試中的 `fakeRepository.Load()` 直接回傳內部 Slice，`Save()` 直接指派傳入 Slice。這是學員用以測試 Service Ownership 的刻意設計，不能誤判為缺陷；Service 必須自己守住兩側的資料所有權邊界。
-- **尚可補強的測試**：目前正式 `TestTodoService_ModifyLoadedTodos` 主要驗證 `List()` 的回傳值不影響 Service，尚未直接持久記錄「修改 Repo 原始 Slice 不影響 Service」的獨立測試。此項屬非阻擋改善，不要因此否定已通過的 Task 20。
-- **最近驗證結果與限制**：Task 20 最新整合暫存副本中 `go test -count=1 ./...` 與 `go vet ./...` 通過，另外的 Ownership 暫存測試也通過；驗證環境為 Go 1.23.2，需暫時調整副本的 `go.mod` 版本宣告，專案原訂 Go 1.25.5 尚未在該版本驗證。這是歷史紀錄，**不是下次新上傳版本的自動保證**。
-- **仍有的非阻擋建議**：可考慮 `gofmt`、Go 習慣的小寫底線檔名（`json_repository.go`）、`Save()` 的錯誤上下文及更完整的負向測試；不要因此倒退重教 Task 16–20。
+- **最新提交（2026-11-07 本輪課程）**：學員另外上傳了 `service.go` 與 `service_test.go`，其中 `AddAndSave()` 已實作、Task 21 測試已補上。原本 `/mnt/data/go-todo-cli.zip` 仍是較舊快照，**不得假設 ZIP 已包含這些最新改動**；新課應先核對當次上傳或最新專案狀態。
+- **最新 Service API**：`NewService(initial []Todo)`、`NewServiceWithRepository(repo TodoRepository)`、`Add`、`List`、`Complete`、`Delete`、`Search`、`Save`、`AddAndSave`。Service 包含 `todos []Todo` 與 `repo TodoRepository`。
+- **其他既有 API**：`TodoReader`、`CountPending`、`StatsService`、`NewStatsService`、`TodoRepository`、`storage.JSONRepository`、`NewJSONRepository`；Module 路徑為 `todo-cli`，依最新實際專案為準。
+- **Fake Repository 行為**：`Load()` 直接回傳 `r.todos`，`Save()` 成功時直接指派傳入的 Slice；此處是有意設計，用來測試 Service 的 Ownership 保護，不必把 Fake 一律改成 Clone。
+- **前次驗證**：第 4 堂 Task 21 的 Code Review 回覆表示，`go test -count=1 ./...` 與 `go vet ./...` 通過；因執行環境為 Go 1.23.2，僅在暫存副本調整 `go.mod` 版本宣告，原專案 Go 1.25.5 宣告未變。這是歷史驗證紀錄，不保證下次修改後仍通過。
+- **後續注意**：第 5 堂優先檢查當前 `main.go` 如何呼叫 Service、如何輸出錯誤與處理輸入，不要因舊 ZIP 缺少 `AddAndSave()` 而倒退重教第 4 堂。若新專案確實缺少已完成程式，先說明快照差異並協助整合。
 
-### 下一次開課：第 4 堂／Task 21 — 資料一致性（Data Consistency）
+### 下一次開課：第 5 堂 — CLI Application
 
-**下次直接從 Task 21 開始，不要重講 Task 16–20。Task 21 尚未實作。** 學員先前的思考方向是「Save 失敗就回復前一狀態」，已引導其思考更容易維護的方案：**先在候選狀態修改 → 儲存候選狀態 → 成功後才提交記憶體狀態**，避免需要回滾已修改的原始狀態。
+**下次直接從第 5 堂開始，不要重講 Task 01–21。** 專注於將目前已具 Service／Repository 的 Todo 專案改造成可用的命令列應用程式。
 
-1. **問題背景**：目前 `service.Add("Learn Go")` 後再呼叫 `service.Save()`；若 Save 失敗，記憶體已有新 Todo，但資料來源可能沒有成功儲存，造成不一致。
-2. **Task 21 實作目標**：在 `todo/service.go` 新增 `func (s *Service) AddAndSave(title string) (Todo, error)`；**保留既有 `Add()`、`Save()` 方法及簽章**，不要在此階段整套重構。
-3. **預計流程**：
-   - 檢查 Repository 是否存在，沒有就回傳 error。
-   - `candidate := slices.Clone(s.todos)` 建立候選資料狀態。
-   - 使用已有的 `GetNextID(candidate)`、`NewTodo`，只把新 Todo 加到候選狀態。
-   - 呼叫 `s.repo.Save(slices.Clone(candidate))`，保護候選狀態不被 Repository 意外修改。
-   - 儲存失敗時回傳 error，不改 `s.todos`；只有儲存成功才以候選狀態更新 `s.todos` 並回傳新 Todo。
-4. **至少需要的測試**：
-   - 成功時新增 Todo，Service 和 Fake Repository 都有新資料。
-   - Fake Repository Save 失敗時 `AddAndSave()` 回傳 error，Service 狀態不變、Repository 原資料不變。
-   - 沒有 Repository 時回傳 error，Service 不變；可額外測試 Repository 故意修改傳入 Slice、原始資料 Ownership。
-5. **重要界線**：上述設計可防止「已知 Save 失敗後仍更新 Service 記憶體」，但不能單靠這個流程保證實際磁碟儲存的原子性、交易性、並發安全或失敗後磁碟資料完全沒有改變。相關檔案安全寫入／資料庫 Transaction 後續再教。
-6. **尚待學員回答的思考題**：**「為什麼『先建立候選狀態 → 儲存成功 → 更新記憶體』通常比『先修改記憶體 → 儲存失敗再 Rollback』更容易維護？」** 下次可先讓學員作答，再檢查實作；不要直接給完整完成答案。
-7. 沿用「問題 → 原因 → Go 概念 → 實作 → 學員提交 → Code Review」的步調，以現有 Todo 專案為唯一實作基礎。先確認新上傳檔案的當前狀態，再安排後續工作。
+1. **開課先檢查**：使用者當次提供的最新 `main.go`、`go.mod`，確認目前命令互動流程、Service／Repository 的初始化方式、錯誤輸出，以及已有的測試。不假設歷史 ZIP 是最新版。
+2. **第一階段主題**：先理解 `os.Args`、CLI 子命令（subcommand）與參數驗證；必要時介紹 `flag`／`flag.FlagSet`，但依當前程式複雜度漸進安排。
+3. **逐步目標**：讓使用者自己將操作發展為 `todo add "Learn Go"`、`todo list`、`todo done 1`、`todo delete 1`、`todo search "Go"`；不可一次要求完成全部命令。
+4. **後續主題**：標準輸入／輸出、`stderr`、exit code、測試 CLI 行為與分離命令解析和 Domain Service 的責任。先用 Go Standard Library，不急著導入 Cobra 等第三方 Framework。
+5. **教學流程**：先解釋當前 `main.go` 的問題及設計選擇，再交付小型任務／提示／必要的 Skeleton；等學員提交後才 Code Review。延續「問題 → 原因 → Go 概念 → 實作 → 驗收」節奏。
+6. **注意界線**：`AddAndSave` 的基本資料一致性已學過；並發安全、原子檔案寫入、SQL Transaction 留待日後自然遇到時再深入，不要在第 5 堂第一個任務硬塞。
 
 目前預計的課程主線如下：
 
@@ -318,10 +318,10 @@
 ## 開課與續課規則
 
 - **有進度紀錄時：** 先閱讀本文「課堂進度紀錄」及使用者當次提供的最新專案內容，從尚未完成的任務接續；不要直接假設先前檔案仍是最新版本。
-- **本次指定續課位置：** **第 4 堂「Interface 與 Dependency Injection」／Part 1／Task 16「第一個 Interface」**。第 1、2、3 堂及 Task 01–15 已完成，不重新授課或要求重做。
-- **開課第一步：** 確認當次專案的 `Service.List() []Todo`、`Service` Receiver 和相關測試；如果遇到歷史快照與新檔案不一致，說明差異，必要時以最新檔案為準。
-- **接著開始 Task 16：** 解釋 `TodoReader` 小介面與 `*Service` 的隱式實作；安排 `stats.go`／`stats_test.go` 的 `CountPending` 與 Fake Reader 練習。實作由學員完成，提交後再驗收。
-- **不得提前跳到 Repository／SQLite：** 先完成 Interface、Method Set、基本 Dependency Injection 的學習；維持每次只進行一個適中任務。
-- **舊版整合提示：** 如因 `todo_test.go`、`service_test.go` 含同名測試導致編譯失敗，提醒刪除舊版重複測試，而不是要求重新完成已通過的 Service 設計；曾有 CRLF／gofmt 格式差異。
+- **本次指定續課位置：** **第 5 堂「CLI Application」**。第 1–4 堂及 Task 01–21 已完成驗收；不重新授課或要求重做。
+- **開課第一步：** 檢查 `main.go` 的現有使用流程、Service／Repository 的整合方式與錯誤處理，確認當次檔案是否與已完成的 Task 21 狀態一致；如不一致，先說明版本差異，再決定如何整合。
+- **接著開始 CLI 第一階段：** 介紹 `os.Args` 與子命令解析，從一個小型命令（例如 `todo list` 或 `todo add "Learn Go"`）開始實作，並安排合理的驗證與測試；下一步才逐漸引入 `flag.FlagSet`、stdin/stdout、stderr、exit code。
+- **不提前跳到 SQLite 或 REST API：** 先完成 CLI 的命令解析、參數驗證與責任分層，保持單一課程階段的適當工作量。
+- **舊版整合提示：** 如 `todo_test.go`、`service_test.go` 含同名測試導致編譯失敗，提醒移除重複舊測試，而不是重做已通過的 Service；留意 CRLF／gofmt 差異。
 - **若未來沒有任何進度紀錄：** 才從「第 1 堂：完整單元測試 + Slice 深入」開始。
-- 永遠以當次提供的專案內容為準，保留循序漸進的教學節奏，不要一次提供整堂課的完成版程式碼。
+- 永遠以當次提供的專案內容為準，循序漸進教學，不要一次提供整堂課的完成版程式碼。
