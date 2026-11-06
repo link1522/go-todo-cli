@@ -224,3 +224,129 @@ func TestTodoService_SearchOwnership(t *testing.T) {
 		t.Errorf("expected %v, got %v", wanted, got)
 	}
 }
+
+type fakeRepository struct {
+	todos     []Todo
+	loadError error
+	saveError error
+}
+
+func (r *fakeRepository) Load() ([]Todo, error) {
+	if r.loadError != nil {
+		return nil, r.loadError
+	}
+	return r.todos, nil
+}
+
+func (r *fakeRepository) Save(todos []Todo) error {
+	if r.saveError != nil {
+		return r.saveError
+	}
+	r.todos = todos
+	return nil
+}
+
+func TestTodoService_WithRepo(t *testing.T) {
+	initTodos := []Todo{
+		{ID: 1, Title: "aaaa"},
+		{ID: 2, Title: "bbbb"},
+	}
+	fakeRepo := fakeRepository{todos: initTodos}
+	service, err := NewServiceWithRepository(&fakeRepo)
+	if err != nil {
+		t.Fatalf("got error: %v", err)
+	}
+
+	got := service.List()
+	if !slices.Equal(initTodos, got) {
+		t.Errorf("expected %v, got %v", initTodos, got)
+	}
+
+	service.Add("cccc")
+	err = service.Save()
+	if err != nil {
+		t.Errorf("got error: %v", err)
+	}
+
+	got, err = fakeRepo.Load()
+	wanted := []Todo{
+		{ID: 1, Title: "aaaa"},
+		{ID: 2, Title: "bbbb"},
+		{ID: 3, Title: "cccc"},
+	}
+
+	if !slices.Equal(wanted, got) {
+		t.Errorf("expected %v, got %v", wanted, got)
+	}
+}
+
+func TestTodoService_WithNilRepo(t *testing.T) {
+	_, err := NewServiceWithRepository(nil)
+
+	if err == nil {
+		t.Errorf("expected error when passing nil repository")
+	}
+}
+
+func TestTodoService_WithRepoLoadFailed(t *testing.T) {
+	initTodos := []Todo{
+		{ID: 1, Title: "aaaa"},
+		{ID: 2, Title: "bbbb"},
+	}
+	fakeRepo := fakeRepository{todos: initTodos, loadError: errors.New("Load failed")}
+	_, err := NewServiceWithRepository(&fakeRepo)
+
+	if err == nil {
+		t.Errorf("expected error when loading failed")
+	}
+}
+
+func TestTodoService_WithRepoSaveFailed(t *testing.T) {
+	initTodos := []Todo{
+		{ID: 1, Title: "aaaa"},
+		{ID: 2, Title: "bbbb"},
+	}
+	fakeRepo := fakeRepository{todos: initTodos, saveError: errors.New("Save failed")}
+	service, err := NewServiceWithRepository(&fakeRepo)
+	if err != nil {
+		t.Fatalf("got error: %v", err)
+	}
+
+	err = service.Save()
+	if err == nil {
+		t.Errorf("expected error when saving failed")
+	}
+}
+
+func TestTodoService_MissRepo(t *testing.T) {
+	service := NewService([]Todo{
+		{ID: 1, Title: "aaaa"},
+		{ID: 2, Title: "bbbb"},
+	})
+
+	err := service.Save()
+
+	if err == nil {
+		t.Error("expected error when missing repository")
+	}
+}
+
+func TestTodoService_ModifyLoadedTodos(t *testing.T) {
+	initTodos := []Todo{
+		{ID: 1, Title: "aaaa"},
+		{ID: 2, Title: "bbbb"},
+	}
+	fakeRepo := fakeRepository{todos: initTodos}
+	service, err := NewServiceWithRepository(&fakeRepo)
+	if err != nil {
+		t.Fatalf("got error: %v", err)
+	}
+
+	todos := service.List()
+	todos[0].Title = "test"
+
+	got := service.List()
+	if !slices.Equal(initTodos, got) {
+		t.Errorf("expected %v, got %v", initTodos, got)
+	}
+}
