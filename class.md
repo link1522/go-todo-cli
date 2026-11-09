@@ -2,7 +2,7 @@
 
 我的目標不是只學語法，而是透過同一個 Todo 專案逐步學會 Go 的實務開發方式，最後把它從簡單 CLI 演進成具有測試、Service、Repository、SQLite、REST API、Concurrency 與工程化結構的小型 Go Backend 專案。
 
-## 課堂進度紀錄（最後更新：2026-11-07）
+## 課堂進度紀錄（最後更新：2026-11-09）
 
 > **目前狀態：第 1 堂「完整單元測試 + Slice 深入」、第 2 堂「Go Error Handling」、第 3 堂「Struct 與 Method／Todo Service 基礎」、第 4 堂「Interface 與 Dependency Injection」均已完成；Task 16–21 均已通過驗收。**
 > **下次上課直接從「第 5 堂：CLI Application」開始。** 不要重講 Task 21、重新布置 Task 01–21，或從第 4 堂開始。
@@ -325,3 +325,45 @@
 - **舊版整合提示：** 如 `todo_test.go`、`service_test.go` 含同名測試導致編譯失敗，提醒移除重複舊測試，而不是重做已通過的 Service；留意 CRLF／gofmt 差異。
 - **若未來沒有任何進度紀錄：** 才從「第 1 堂：完整單元測試 + Slice 深入」開始。
 - 永遠以當次提供的專案內容為準，循序漸進教學，不要一次提供整堂課的完成版程式碼。
+
+
+---
+
+## Latest continuation update (2026-11-09) — Lesson 5 / CLI Application
+
+### Completed in this session: Tasks 22–25
+
+- **Task 22 — CLI subcommand entry point:** introduced `os.Args`, command selection, and the first `list` subcommand. Extracted command handling from `main()` into `runCLI(args []string, ...)` so it can be called directly in tests.
+- **Task 22.1 — Argument validation:** added the empty-argument guard to prevent `args[0]` from panicking; validates the command and its argument count before initializing the Service.
+- **Task 22.2 — Output abstraction:** changed `printTodos` to accept `io.Writer`, use `fmt.Fprintf`, and receive `os.Stdout` in normal execution. The learner understands that `*bytes.Buffer` satisfies `io.Writer` because its method set includes the pointer-receiver `Write` method; assigning a `bytes.Buffer` value to `io.Writer` does not trigger automatic address-taking.
+- **Task 23 — Unit test for CLI output:** created `TestPrintTodos` using `bytes.Buffer` and exact output comparison, including newline characters.
+- **Task 24 — Table-driven tests:** refactored `TestPrintTodos` into cases for an empty slice, one unfinished Todo, one completed Todo, and multiple Todos. Uses `t.Run(tt.name, ...)`; the learner correctly explained that named subtests make failures easier to locate and can be run individually.
+- **Task 25 — Fake Repository and CLI tests:** added a local `fakeRepository` implementing `todo.TodoRepository`; `TestRunCLI` verifies `list` output through `bytes.Buffer`; `TestRunCLI_Errors` verifies missing command, unknown command, and extra arguments. The learner correctly identified that Fake Repository can supply deterministic Todo data without accessing the real JSON file.
+- **Prior verification note:** the previous review reported `go test ./...` and `go vet ./...` passing in a temporary copy. The available toolchain was Go 1.23.2 while the project declares Go 1.25.5, so only the temporary copy's Go version declaration was adjusted for that check; the original project files were not changed by that verification.
+
+### Current submitted CLI state (based on the separately uploaded `main.go` and `main_test.go`)
+
+- `main()` keeps the interactive mode when no command-line arguments are provided. Otherwise it creates `storage.NewJSONRepository("todos.json")` and calls `runCLI(os.Args[1:], repo, os.Stdout)`.
+- Current signature: `runCLI(args []string, repo todo.TodoRepository, w io.Writer) error`.
+- `runCLI` validates an empty argument list, currently recognizes only `list`, rejects extra arguments for `list`, constructs `todo.Service` with `todo.NewServiceWithRepository(repo)`, and prints `service.List()` through the supplied writer.
+- `runInteractive()` remains the earlier Scanner-based implementation and still uses the legacy storage/domain functions directly. It has not yet been migrated to the Service-based CLI path.
+- `main_test.go` contains `fakeRepository`, the four `TestPrintTodos` table cases, a successful `TestRunCLI` case, and table-driven `TestRunCLI_Errors` cases.
+- The latest `main.go` and `main_test.go` were uploaded separately in this conversation. The `go-todo-cli.zip` source snapshot may not contain these exact latest files. At the next lesson, inspect the files the user provides and do not assume the ZIP's source files are newer than the separately uploaded files.
+
+### Design decision recorded for Task 26
+
+- The learner prefers `runCLI` to receive `*todo.Service` rather than `todo.TodoRepository`.
+- This is accepted for the current Todo CLI: the CLI should call the application's Service API and should not construct the Service or know which Repository backs it. Do not add another CLI-facing Interface solely for hypothetical future replacement; introduce one only if a concrete need appears.
+- Tests can still use `fakeRepository`: construct a real Service with `todo.NewServiceWithRepository(fakeRepo)`, then inject that Service into `runCLI`.
+
+### Next session: start directly at Task 26 — CLI and Service Decoupling
+
+**Do not repeat Tasks 22–25 or Tasks 01–21.** Continue from the current submitted code and implement only the next focused refactor.
+
+1. Extract command parsing and validation into `parseCommand(args []string) (string, error)`. It should reject missing commands, unknown commands, and invalid argument counts without initializing the Repository or Service.
+2. Change the command runner to `runCLI(command string, service *todo.Service, w io.Writer) error`. It should execute the parsed command, call Service methods, and write output; it should neither receive a Repository nor construct a Service.
+3. Keep dependency assembly in `main()`: parse and validate first; only after successful parsing create `JSONRepository`, create `todo.Service` with `todo.NewServiceWithRepository`, then call `runCLI`.
+4. The order matters because `NewServiceWithRepository` loads data during construction. Invalid commands should be rejected before any repository load is attempted.
+5. In tests, create a Service backed by `fakeRepository`, then test `runCLI` with that Service and a `bytes.Buffer`. Test `parseCommand` independently with table-driven cases.
+6. Keep the current interactive `runInteractive()` path unchanged unless a specific Task 26 requirement makes a change necessary. The focus is the subcommand path's dependency direction and responsibility boundaries.
+
