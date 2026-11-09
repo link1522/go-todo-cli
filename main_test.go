@@ -6,6 +6,27 @@ import (
 	"todo-cli/todo"
 )
 
+type fakeRepository struct {
+	todos     []todo.Todo
+	loadError error
+	saveError error
+}
+
+func (r *fakeRepository) Load() ([]todo.Todo, error) {
+	if r.loadError != nil {
+		return nil, r.loadError
+	}
+	return r.todos, nil
+}
+
+func (r *fakeRepository) Save(todos []todo.Todo) error {
+	if r.saveError != nil {
+		return r.saveError
+	}
+	r.todos = todos
+	return nil
+}
+
 func TestPrintTodos(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -52,55 +73,64 @@ func TestPrintTodos(t *testing.T) {
 }
 
 func TestRunCLI(t *testing.T) {
+	todos := []todo.Todo{
+		{ID: 1, Title: "Learn Go"},
+	}
+	fakeRepo := &fakeRepository{
+		todos: todos,
+	}
+	var buf bytes.Buffer
+
+	err := runCLI([]string{"list"}, fakeRepo, &buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wanted := "1. [ ] Learn Go\n"
+	if wanted != buf.String() {
+		t.Errorf("expected %v, got %v", wanted, buf.String())
+	}
+}
+
+func TestRunCLI_Errors(t *testing.T) {
 	tests := []struct {
 		name         string
 		args         []string
-		hasError     bool
 		errorMessage string
 	}{
 		{
 			name:         "missing command",
 			args:         []string{},
-			hasError:     true,
 			errorMessage: "missing command",
 		},
 		{
 			name:         "unknown command",
 			args:         []string{"unknown"},
-			hasError:     true,
 			errorMessage: "unknown command",
 		},
 		{
 			name:         "argument error",
 			args:         []string{"list", "extra"},
-			hasError:     true,
 			errorMessage: "argument error",
-		},
-		{
-			name:         "normal",
-			args:         []string{"list"},
-			hasError:     false,
-			errorMessage: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := runCLI(tt.args)
-			gotError := err != nil
+			fakeRepo := &fakeRepository{
+				todos: []todo.Todo{
+					{ID: 1, Title: "learn go"},
+				},
+			}
+			var buf bytes.Buffer
 
-			if gotError != tt.hasError {
-				if tt.hasError {
-					t.Fatalf("expected error: %s", tt.errorMessage)
-				} else {
-					t.Errorf("it should not have error, but got %v", err)
-				}
+			err := runCLI(tt.args, fakeRepo, &buf)
+			if err == nil {
+				t.Fatalf("expected error: %s", tt.errorMessage)
 			}
 
-			if gotError {
-				if tt.errorMessage != err.Error() {
-					t.Errorf("expected %s, got %s", tt.errorMessage, err.Error())
-				}
+			if tt.errorMessage != err.Error() {
+				t.Errorf("expected %s, got %s", tt.errorMessage, err.Error())
 			}
 		})
 	}

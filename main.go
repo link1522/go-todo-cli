@@ -18,14 +18,16 @@ func main() {
 		runInteractive()
 		return
 	}
+
 	args := os.Args[1:]
-	err := runCLI(args)
+	repo := storage.NewJSONRepository("todos.json")
+	err := runCLI(args, repo, os.Stdout)
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
-func runCLI(args []string) error {
+func runCLI(args []string, repo todo.TodoRepository, w io.Writer) error {
 	if len(args) == 0 {
 		return errors.New("missing command")
 	}
@@ -38,16 +40,15 @@ func runCLI(args []string) error {
 	switch args[0] {
 	case "list":
 		if len(args) > 1 {
-			return errors.New("unknown command")
+			return errors.New("argument error")
 		}
 
-		repo := storage.NewJSONRepository("todos.json")
 		service, err := todo.NewServiceWithRepository(repo)
 		if err != nil {
 			return err
 		}
 
-		printTodos(os.Stdout, service.List())
+		printTodos(w, service.List())
 	default:
 		return errors.New("unknown command")
 	}
