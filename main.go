@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"todo-cli/storage"
@@ -12,6 +14,48 @@ import (
 )
 
 func main() {
+	if len(os.Args) < 2 {
+		runInteractive()
+		return
+	}
+	args := os.Args[1:]
+	err := runCLI(args)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func runCLI(args []string) error {
+	if len(args) == 0 {
+		return errors.New("missing command")
+	}
+
+	validCommands := []string{"list"}
+	if !slices.Contains(validCommands, args[0]) {
+		return fmt.Errorf("unknown command")
+	}
+
+	switch args[0] {
+	case "list":
+		if len(args) > 1 {
+			return errors.New("unknown command")
+		}
+
+		repo := storage.NewJSONRepository("todos.json")
+		service, err := todo.NewServiceWithRepository(repo)
+		if err != nil {
+			return err
+		}
+
+		printTodos(os.Stdout, service.List())
+	default:
+		return errors.New("unknown command")
+	}
+
+	return nil
+}
+
+func runInteractive() {
 	todos, err := storage.LoadTodos()
 	if err != nil {
 		fmt.Println(err)
@@ -37,7 +81,7 @@ func main() {
 				fmt.Println("新增成功")
 			}
 		case "list":
-			printTodos(todos)
+			printTodos(os.Stdout, todos)
 		case "done":
 			if len(parts) > 1 {
 				id, err := strconv.Atoi(parts[1])
@@ -91,7 +135,7 @@ func main() {
 					fmt.Println("找不到任何項目")
 					continue
 				}
-				printTodos(foundTodos)
+				printTodos(os.Stdout, foundTodos)
 			}
 		case "exit":
 			fmt.Println("Bye!")
@@ -104,14 +148,14 @@ func main() {
 	}
 }
 
-func printTodos(todos []todo.Todo) {
+func printTodos(w io.Writer, todos []todo.Todo) {
 	for _, todo := range todos {
 		status := "[ ]"
 		if todo.Done {
 			status = "[x]"
 		}
 
-		fmt.Printf("%d. %s %s\n", todo.ID, status, todo.Title)
+		fmt.Fprintf(w, "%d. %s %s\n", todo.ID, status, todo.Title)
 	}
 }
 
