@@ -2,11 +2,11 @@
 
 我的目標不是只學語法，而是透過同一個 Todo 專案逐步學會 Go 的實務開發方式，最後把它從簡單 CLI 演進成具有測試、Service、Repository、SQLite、REST API、Concurrency 與工程化結構的小型 Go Backend 專案。
 
-## 課堂進度紀錄（最後更新：2026-11-09）
+## 課堂進度紀錄（最後更新：2026-11-10）
 
-> **目前狀態：第 1 堂「完整單元測試 + Slice 深入」、第 2 堂「Go Error Handling」、第 3 堂「Struct 與 Method／Todo Service 基礎」、第 4 堂「Interface 與 Dependency Injection」均已完成；Task 16–21 均已通過驗收。**
-> **下次上課直接從「第 5 堂：CLI Application」開始。** 不要重講 Task 21、重新布置 Task 01–21，或從第 4 堂開始。
-> 第 5 堂從目前專案的 `main.go` 出發，先理解 CLI 子命令解析與標準輸入／輸出，再逐步改成 `todo add "Learn Go"`、`todo list` 等操作；每次只安排一個適中任務，不直接交付完整成品。
+> **目前狀態：第 1–4 堂已完成；第 5 堂 CLI Application 進行中，Task 22–27 均已完成驗收。** 已實作 `list`、`add` 子命令；`parseCommand()` 回傳 `CLICommand`，`runCLI()` 使用 `*todo.Service` 與 `io.Writer`。
+> **下次上課直接從「第 5 堂 — Task 28：stderr、Exit Code 與可測試的 main()」開始。** 不要重講 Task 01–27，不要重新要求完成 Task 26 或 Task 27。
+> **Task 28 核心**：導入 `runApp(args []string, stdout io.Writer, stderr io.Writer) int`；正常輸出走 stdout，錯誤走 stderr，成功回傳 0／失敗回傳 1；`os.Exit` 僅由 `main()` 處理。先問思考題，再讓學員自行實作及測試。
 > **任何進度及驗收結論都以當次使用者實際提供的最新專案內容為準；本檔是續課定位，不代表歷史 ZIP 已自動整合最新提交。**
 
 ### 第 1 堂已完成內容
@@ -151,16 +151,17 @@
 
 ### 最近一次專案狀態與整合注意事項
 
-- **最新提交（2026-11-07 本輪課程）**：學員另外上傳了 `service.go` 與 `service_test.go`，其中 `AddAndSave()` 已實作、Task 21 測試已補上。原本 `/mnt/data/go-todo-cli.zip` 仍是較舊快照，**不得假設 ZIP 已包含這些最新改動**；新課應先核對當次上傳或最新專案狀態。
+- **最新提交（2026-11-10）**：學員另行上傳最新 `main.go` 與 `main_test.go`，完成 Task 27 修正並通過該任務核心驗收。原本 `go-todo-cli.zip` 及其內的 `main.go`、`main_test.go`、`class.md` 可能是較舊快照；**續課應以最新單獨上傳的程式檔為準**，不要把舊 ZIP 視為較新的程式碼。
+- **歷史提交（2026-11-07）**：學員曾另外上傳 `service.go` 與 `service_test.go`，完成 Task 21 `AddAndSave()`。此記錄為歷史背景，非下次課程起點。
 - **最新 Service API**：`NewService(initial []Todo)`、`NewServiceWithRepository(repo TodoRepository)`、`Add`、`List`、`Complete`、`Delete`、`Search`、`Save`、`AddAndSave`。Service 包含 `todos []Todo` 與 `repo TodoRepository`。
 - **其他既有 API**：`TodoReader`、`CountPending`、`StatsService`、`NewStatsService`、`TodoRepository`、`storage.JSONRepository`、`NewJSONRepository`；Module 路徑為 `todo-cli`，依最新實際專案為準。
 - **Fake Repository 行為**：`Load()` 直接回傳 `r.todos`，`Save()` 成功時直接指派傳入的 Slice；此處是有意設計，用來測試 Service 的 Ownership 保護，不必把 Fake 一律改成 Clone。
 - **前次驗證**：第 4 堂 Task 21 的 Code Review 回覆表示，`go test -count=1 ./...` 與 `go vet ./...` 通過；因執行環境為 Go 1.23.2，僅在暫存副本調整 `go.mod` 版本宣告，原專案 Go 1.25.5 宣告未變。這是歷史驗證紀錄，不保證下次修改後仍通過。
-- **後續注意**：第 5 堂優先檢查當前 `main.go` 如何呼叫 Service、如何輸出錯誤與處理輸入，不要因舊 ZIP 缺少 `AddAndSave()` 而倒退重教第 4 堂。若新專案確實缺少已完成程式，先說明快照差異並協助整合。
+- **後續注意**：下次從 Task 28 的 `main()` 錯誤輸出及 Exit Code 開始，先核對最新程式，再動手實作；不要因舊 ZIP 缺少已完成的修改而倒退重教。
 
-### 下一次開課：第 5 堂 — CLI Application
+### 第 5 堂原始學習路線（歷史規劃；以文末 2026-11-10 續課更新為準）
 
-**下次直接從第 5 堂開始，不要重講 Task 01–21。** 專注於將目前已具 Service／Repository 的 Todo 專案改造成可用的命令列應用程式。
+**Task 22–27 已完成，不要再把下列初期規劃當成下一次作業。** 本節保留第 5 堂的整體演進目標供參考。
 
 1. **開課先檢查**：使用者當次提供的最新 `main.go`、`go.mod`，確認目前命令互動流程、Service／Repository 的初始化方式、錯誤輸出，以及已有的測試。不假設歷史 ZIP 是最新版。
 2. **第一階段主題**：先理解 `os.Args`、CLI 子命令（subcommand）與參數驗證；必要時介紹 `flag`／`flag.FlagSet`，但依當前程式複雜度漸進安排。
@@ -318,9 +319,9 @@
 ## 開課與續課規則
 
 - **有進度紀錄時：** 先閱讀本文「課堂進度紀錄」及使用者當次提供的最新專案內容，從尚未完成的任務接續；不要直接假設先前檔案仍是最新版本。
-- **本次指定續課位置：** **第 5 堂「CLI Application」**。第 1–4 堂及 Task 01–21 已完成驗收；不重新授課或要求重做。
-- **開課第一步：** 檢查 `main.go` 的現有使用流程、Service／Repository 的整合方式與錯誤處理，確認當次檔案是否與已完成的 Task 21 狀態一致；如不一致，先說明版本差異，再決定如何整合。
-- **接著開始 CLI 第一階段：** 介紹 `os.Args` 與子命令解析，從一個小型命令（例如 `todo list` 或 `todo add "Learn Go"`）開始實作，並安排合理的驗證與測試；下一步才逐漸引入 `flag.FlagSet`、stdin/stdout、stderr、exit code。
+- **本次指定續課位置：** **第 5 堂 — Task 28「stderr、Exit Code 與可測試的 main()」**。Task 01–27 已完成核心驗收；不要重新授課或要求重做。
+- **開課第一步：** 核對最新提交的 `main.go`／`main_test.go`（單獨上傳檔可能比 ZIP 更新），確認目前 `parseCommand()`、`runCLI()` 的狀態與尚未處理的錯誤輸出問題。
+- **接著開始 Task 28：** 先討論為何 `runApp()` 回傳 `int` 而不直接呼叫 `os.Exit()`，再讓學員自行實作可測試的程序進入點、stdout／stderr 分流與 Exit Code 測試；不要再從 `os.Args` 基礎與 `list`／`add` 開始。
 - **不提前跳到 SQLite 或 REST API：** 先完成 CLI 的命令解析、參數驗證與責任分層，保持單一課程階段的適當工作量。
 - **舊版整合提示：** 如 `todo_test.go`、`service_test.go` 含同名測試導致編譯失敗，提醒移除重複舊測試，而不是重做已通過的 Service；留意 CRLF／gofmt 差異。
 - **若未來沒有任何進度紀錄：** 才從「第 1 堂：完整單元測試 + Slice 深入」開始。
@@ -356,9 +357,9 @@
 - This is accepted for the current Todo CLI: the CLI should call the application's Service API and should not construct the Service or know which Repository backs it. Do not add another CLI-facing Interface solely for hypothetical future replacement; introduce one only if a concrete need appears.
 - Tests can still use `fakeRepository`: construct a real Service with `todo.NewServiceWithRepository(fakeRepo)`, then inject that Service into `runCLI`.
 
-### Next session: start directly at Task 26 — CLI and Service Decoupling
+### Historical Task 26 plan (completed; not the next lesson)
 
-**Do not repeat Tasks 22–25 or Tasks 01–21.** Continue from the current submitted code and implement only the next focused refactor.
+**Archive only:** Task 26 has already passed; do not assign this section again. The bullets below document the original Task 26 requirements, not the next lesson.
 
 1. Extract command parsing and validation into `parseCommand(args []string) (string, error)`. It should reject missing commands, unknown commands, and invalid argument counts without initializing the Repository or Service.
 2. Change the command runner to `runCLI(command string, service *todo.Service, w io.Writer) error`. It should execute the parsed command, call Service methods, and write output; it should neither receive a Repository nor construct a Service.
@@ -367,3 +368,47 @@
 5. In tests, create a Service backed by `fakeRepository`, then test `runCLI` with that Service and a `bytes.Buffer`. Test `parseCommand` independently with table-driven cases.
 6. Keep the current interactive `runInteractive()` path unchanged unless a specific Task 26 requirement makes a change necessary. The focus is the subcommand path's dependency direction and responsibility boundaries.
 
+
+
+---
+
+## 最新續課更新（2026-11-10）— 第 5 堂 Task 26–27 完成，下一次從 Task 28 開始
+
+### 已完成：Task 26 — CLI 與 Service 解耦
+
+- 將命令解析獨立為 `parseCommand()`，先驗證命令，之後才建立 Repository 和 Service，避免無效命令觸發 Repository Load。
+- `runCLI()` 改成由外部傳入 `*todo.Service` 和 `io.Writer`；不在 `runCLI()` 建立 Repository 或 Service。
+- 使用 `fakeRepository` 建立真的 Service 來測試 `runCLI()`，並獨立測試命令解析。
+- **Task 26 已完成驗收**；無需要求學員重做。
+
+### 已完成：Task 27 — 帶參數的 CLI 子命令
+
+- 加入 `type CLICommand struct { Name string; Args []string }`；`parseCommand(args []string) (CLICommand, error)` 將命令名稱與參數分開回傳。
+- `parseCommand()` 支援 `list`（零個額外參數）與 `add "Learn Go"`（剛好一個非空白標題）；拒絕缺少命令、未知命令、參數過多、`add` 缺少標題、空字串與只有空白的標題。
+- 使用 `strings.TrimSpace(args[1]) == ""` 驗證純空白標題，但保留原始標題字串作為 `CLICommand.Args[0]`。
+- `runCLI(command CLICommand, service *todo.Service, w io.Writer) error` 執行 `add` 時呼叫 `service.AddAndSave(command.Args[0])`，成功時透過 `fmt.Fprintf(w, ...)` 輸出新增的 Todo ID 與標題，失敗直接回傳 error；`list` 仍透過 `printTodos(w, service.List())` 輸出。
+- `main()` 在有命令列參數時先 `parseCommand(os.Args[1:])`，成功後才建立 `storage.NewJSONRepository("todos.json")` 和 `todo.NewServiceWithRepository(repo)`，再呼叫 `runCLI`；無參數時仍進入原有的 `runInteractive()`。
+- `main_test.go` 已有 `TestPrintTodos`、`TestParseCommand`、`TestParseCommand_Failed`、`TestRunCLI_List`、`TestRunCLI_Add`、`TestRunCLI_Add_SaveFailed`，並使用 `fakeRepository` 與 `bytes.Buffer`。
+- **上一輪 Code Review 結論：Task 27 核心功能驗收通過。** 該輪回覆表示 `go test -count=1 ./...`、`go vet ./...` 均通過，且額外診斷涵蓋新增輸出、儲存失敗傳遞、狀態維持及 Tab／換行空白驗證。此為歷史驗收紀錄，並非每次續課都已重新執行。
+- **非阻擋測試補強，建議在 Task 28 一併補上**：`TestRunCLI_Add` 目前只驗證 `service.List()`，還應確認 `fakeRepo.todos` 與成功輸出 `buf.String()`；`TestRunCLI_Add_SaveFailed` 已檢查有 Error 和 Service 狀態不變，還可用 `errors.Is` 驗證錯誤、檢查 Repository 狀態不變以及無成功訊息。這些補強不影響 Task 27 已通過的結論。
+
+### 下一次正式開課位置：第 5 堂 — Task 28：stderr、Exit Code 與可測試的 main()
+
+**不要重講 Task 01–27，也不要提前進入 `done`／`delete`／`search`、SQLite 或 REST API。** 按照「問題 → 原因 → Go 概念 → 小任務 → 學員提交 → Code Review」延續課程。
+
+**起始思考題（已在上次課程布置、尚待學員回答）**：
+
+> 為什麼選擇讓 `runApp()` 回傳 `int`，而不是直接在 `runApp()` 呼叫 `os.Exit()`？除了方便測試以外，還有什麼程式設計上的好處？
+
+**已布置的 Task 28 實作要求：**
+
+1. 新增 `func runApp(args []string, stdout io.Writer, stderr io.Writer) int`，集中處理命令解析、Repository／Service 初始化與呼叫 `runCLI()`。
+2. 任何解析、初始化或執行錯誤要寫入 `stderr` 並回傳 `1`；成功時資料寫入 `stdout`、回傳 `0`。
+3. `main()` 保留「沒有命令列參數就呼叫 `runInteractive()`」的現有行為；有參數時呼叫 `runApp()`，並由 `main()` 負責 `os.Exit()`。**不要在 `runApp()` 或 `runCLI()` 中直接呼叫 `os.Exit()`**，以免終止測試程序。
+4. 保持目前 `runCLI(command CLICommand, service *todo.Service, w io.Writer) error` 的函式簽章；不引入第三方 CLI Framework。
+5. 新增 `TestRunApp`，使用 `bytes.Buffer` 分別收集 stdout 與 stderr，至少測試：`["unknown"]` → stdout 空／stderr 有 `unknown command`／exit 1；`["add"]` → stdout 空／stderr 有 `add missing title`／exit 1；`["list", "extra"]` → stdout 空／stderr 有 `too many arguments`／exit 1。這些案例均在 Repository 初始化前失敗，不需要 Fake Repository。
+6. 追加前述 Task 27 的非阻擋 Assertions，讓測試完整涵蓋 Repository 持久化、成功輸出及儲存失敗的錯誤與狀態。
+
+**教學提示**：要說清楚 `return` 離開 `main()` 不等於非零 Exit Code；stdout 是正常資料，stderr 是錯誤／診斷輸出；`os.Exit` 屬於進程控制，應只留在程式最外層。提供函式簽章與必要提示即可，**不要直接替學員寫出整份 Task 28 解答**。等學員回答思考題並提交程式後再進行驗收。
+
+**檔案版本提醒**：本檔已更新至 Task 28，但同一份舊 ZIP 中的 `main.go`、`main_test.go` 可能仍是 Task 25 左右的版本。再次開課時應優先使用 2026-11-10 另行上傳的最新版，若無法取得則請學員提供最新檔案，不要據舊 ZIP 否定已驗收的 Task 26–27。
