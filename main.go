@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"slices"
 	"strconv"
 	"strings"
 	"todo-cli/storage"
@@ -40,10 +39,16 @@ func main() {
 	}
 }
 
-func runCLI(command string, service *todo.Service, w io.Writer) error {
-	switch command {
+func runCLI(command CLICommand, service *todo.Service, w io.Writer) error {
+	switch command.Name {
 	case "list":
 		printTodos(w, service.List())
+	case "add":
+		todo, err := service.AddAndSave(command.Args[0])
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(w, "%d. %s 添加成功\n", todo.ID, todo.Title)
 	default:
 		return errors.New("unknown command")
 	}
@@ -164,19 +169,34 @@ func save(todos []todo.Todo) bool {
 	return true
 }
 
-func parseCommand(args []string) (string, error) {
+func parseCommand(args []string) (CLICommand, error) {
 	if len(args) == 0 {
-		return "", errors.New("missing command")
+		return CLICommand{}, errors.New("missing command")
 	}
 
-	if len(args) > 1 {
-		return "", errors.New("argument error")
+	switch args[0] {
+	case "list":
+		if len(args) > 1 {
+			return CLICommand{}, errors.New("too many arguments")
+		}
+		return CLICommand{Name: "list"}, nil
+	case "add":
+		if len(args) > 2 {
+			return CLICommand{}, errors.New("too many arguments")
+		}
+		if len(args) < 2 {
+			return CLICommand{}, errors.New("add missing title")
+		}
+		if strings.TrimSpace(args[1]) == "" {
+			return CLICommand{}, errors.New("add empty title")
+		}
+		return CLICommand{Name: "add", Args: []string{args[1]}}, nil
+	default:
+		return CLICommand{}, errors.New("unknown command")
 	}
+}
 
-	validCommands := []string{"list"}
-	if !slices.Contains(validCommands, args[0]) {
-		return "", errors.New("unknown command")
-	}
-
-	return args[0], nil
+type CLICommand struct {
+	Name string
+	Args []string
 }

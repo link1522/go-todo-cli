@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"errors"
+	"slices"
 	"testing"
 	"todo-cli/todo"
 )
@@ -73,14 +75,38 @@ func TestPrintTodos(t *testing.T) {
 }
 
 func TestParseCommand(t *testing.T) {
-	args := []string{"list"}
-	command, err := parseCommand(args)
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		name   string
+		args   []string
+		wanted CLICommand
+	}{
+		{
+			name:   "list command",
+			args:   []string{"list"},
+			wanted: CLICommand{Name: "list"},
+		},
+		{
+			name:   "add command",
+			args:   []string{"add", "Learn Go"},
+			wanted: CLICommand{Name: "add", Args: []string{"Learn Go"}},
+		},
 	}
 
-	if command != "list" {
-		t.Errorf("expected 'list', got %s", command)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			command, err := parseCommand(tt.args)
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if command.Name != tt.wanted.Name {
+				t.Errorf("expected %s, got %s", tt.wanted.Name, command.Name)
+			}
+			if !slices.Equal(command.Args, tt.wanted.Args) {
+				t.Errorf("expected %v, got %v", tt.wanted.Args, command.Args)
+			}
+		})
 	}
 }
 
@@ -101,9 +127,29 @@ func TestParseCommand_Failed(t *testing.T) {
 			errorMessage: "unknown command",
 		},
 		{
-			name:         "argument error",
+			name:         "list too many arguments",
 			args:         []string{"list", "extra"},
-			errorMessage: "argument error",
+			errorMessage: "too many arguments",
+		},
+		{
+			name:         "add missing title",
+			args:         []string{"add"},
+			errorMessage: "add missing title",
+		},
+		{
+			name:         "add empty title",
+			args:         []string{"add", ""},
+			errorMessage: "add empty title",
+		},
+		{
+			name:         "add empty title (space)",
+			args:         []string{"add", "   "},
+			errorMessage: "add empty title",
+		},
+		{
+			name:         "add too many arguments",
+			args:         []string{"add", "Learn", "Go"},
+			errorMessage: "too many arguments",
 		},
 	}
 
@@ -118,14 +164,14 @@ func TestParseCommand_Failed(t *testing.T) {
 				t.Errorf("expected error message: %s, got %s", tt.errorMessage, err.Error())
 			}
 
-			if command != "" {
-				t.Errorf("expected empty string, got %s", command)
+			if command.Name != "" {
+				t.Errorf("expected empty command, got %s", command.Name)
 			}
 		})
 	}
 }
 
-func TestRunCLI(t *testing.T) {
+func TestRunCLI_List(t *testing.T) {
 	todos := []todo.Todo{
 		{ID: 1, Title: "Learn Go"},
 	}
@@ -138,7 +184,7 @@ func TestRunCLI(t *testing.T) {
 	}
 	var buf bytes.Buffer
 
-	err = runCLI("list", service, &buf)
+	err = runCLI(CLICommand{Name: "list"}, service, &buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,5 +192,65 @@ func TestRunCLI(t *testing.T) {
 	wanted := "1. [ ] Learn Go\n"
 	if wanted != buf.String() {
 		t.Errorf("expected %v, got %v", wanted, buf.String())
+	}
+}
+
+func TestRunCLI_Add(t *testing.T) {
+	todos := []todo.Todo{
+		{ID: 1, Title: "Learn Go"},
+	}
+	fakeRepo := &fakeRepository{
+		todos: todos,
+	}
+	service, err := todo.NewServiceWithRepository(fakeRepo)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+
+	err = runCLI(CLICommand{Name: "add", Args: []string{"Sleep"}}, service, &buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := service.List()
+	wanted := []todo.Todo{
+		{ID: 1, Title: "Learn Go"},
+		{ID: 2, Title: "Sleep"},
+	}
+
+	if !slices.Equal(wanted, got) {
+		t.Errorf("expcted %v, got %v", wanted, got)
+	}
+}
+
+func TestRunCLI_Add_SaveFailed(t *testing.T) {
+	todos := []todo.Todo{
+		{ID: 1, Title: "Learn Go"},
+	}
+	fakeRepo := &fakeRepository{
+		todos:     todos,
+		saveError: errors.New("save failed"),
+	}
+	service, err := todo.NewServiceWithRepository(fakeRepo)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+
+	err = runCLI(CLICommand{Name: "add", Args: []string{"Sleep"}}, service, &buf)
+	if err == nil {
+		t.Fatal("expected save error")
+	}
+
+	got := service.List()
+	wanted := []todo.Todo{
+		{ID: 1, Title: "Learn Go"},
+	}
+
+	if !slices.Equal(wanted, got) {
+		t.Errorf("expcted %v, got %v", wanted, got)
 	}
 }
