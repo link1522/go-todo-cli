@@ -72,27 +72,19 @@ func TestPrintTodos(t *testing.T) {
 	}
 }
 
-func TestRunCLI(t *testing.T) {
-	todos := []todo.Todo{
-		{ID: 1, Title: "Learn Go"},
-	}
-	fakeRepo := &fakeRepository{
-		todos: todos,
-	}
-	var buf bytes.Buffer
-
-	err := runCLI([]string{"list"}, fakeRepo, &buf)
+func TestParseCommand(t *testing.T) {
+	args := []string{"list"}
+	command, err := parseCommand(args)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	wanted := "1. [ ] Learn Go\n"
-	if wanted != buf.String() {
-		t.Errorf("expected %v, got %v", wanted, buf.String())
+	if command != "list" {
+		t.Errorf("expected 'list', got %s", command)
 	}
 }
 
-func TestRunCLI_Errors(t *testing.T) {
+func TestParseCommand_Failed(t *testing.T) {
 	tests := []struct {
 		name         string
 		args         []string
@@ -117,21 +109,42 @@ func TestRunCLI_Errors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeRepo := &fakeRepository{
-				todos: []todo.Todo{
-					{ID: 1, Title: "learn go"},
-				},
-			}
-			var buf bytes.Buffer
-
-			err := runCLI(tt.args, fakeRepo, &buf)
+			command, err := parseCommand(tt.args)
 			if err == nil {
-				t.Fatalf("expected error: %s", tt.errorMessage)
+				t.Fatalf("expected error with message %s", tt.errorMessage)
 			}
 
-			if tt.errorMessage != err.Error() {
-				t.Errorf("expected %s, got %s", tt.errorMessage, err.Error())
+			if err.Error() != tt.errorMessage {
+				t.Errorf("expected error message: %s, got %s", tt.errorMessage, err.Error())
+			}
+
+			if command != "" {
+				t.Errorf("expected empty string, got %s", command)
 			}
 		})
+	}
+}
+
+func TestRunCLI(t *testing.T) {
+	todos := []todo.Todo{
+		{ID: 1, Title: "Learn Go"},
+	}
+	fakeRepo := &fakeRepository{
+		todos: todos,
+	}
+	service, err := todo.NewServiceWithRepository(fakeRepo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+
+	err = runCLI("list", service, &buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wanted := "1. [ ] Learn Go\n"
+	if wanted != buf.String() {
+		t.Errorf("expected %v, got %v", wanted, buf.String())
 	}
 }

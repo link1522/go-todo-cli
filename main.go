@@ -20,34 +20,29 @@ func main() {
 	}
 
 	args := os.Args[1:]
-	repo := storage.NewJSONRepository("todos.json")
-	err := runCLI(args, repo, os.Stdout)
+	command, err := parseCommand(args)
 	if err != nil {
 		fmt.Println(err)
+		return
+	}
+
+	repo := storage.NewJSONRepository("todos.json")
+	service, err := todo.NewServiceWithRepository(repo)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = runCLI(command, service, os.Stdout)
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
 }
 
-func runCLI(args []string, repo todo.TodoRepository, w io.Writer) error {
-	if len(args) == 0 {
-		return errors.New("missing command")
-	}
-
-	validCommands := []string{"list"}
-	if !slices.Contains(validCommands, args[0]) {
-		return fmt.Errorf("unknown command")
-	}
-
-	switch args[0] {
+func runCLI(command string, service *todo.Service, w io.Writer) error {
+	switch command {
 	case "list":
-		if len(args) > 1 {
-			return errors.New("argument error")
-		}
-
-		service, err := todo.NewServiceWithRepository(repo)
-		if err != nil {
-			return err
-		}
-
 		printTodos(w, service.List())
 	default:
 		return errors.New("unknown command")
@@ -167,4 +162,21 @@ func save(todos []todo.Todo) bool {
 		return false
 	}
 	return true
+}
+
+func parseCommand(args []string) (string, error) {
+	if len(args) == 0 {
+		return "", errors.New("missing command")
+	}
+
+	if len(args) > 1 {
+		return "", errors.New("argument error")
+	}
+
+	validCommands := []string{"list"}
+	if !slices.Contains(validCommands, args[0]) {
+		return "", errors.New("unknown command")
+	}
+
+	return args[0], nil
 }
