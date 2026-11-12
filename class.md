@@ -2,12 +2,12 @@
 
 我的目標不是只學語法，而是透過同一個 Todo 專案逐步學會 Go 的實務開發方式，最後把它從簡單 CLI 演進成具有測試、Service、Repository、SQLite、REST API、Concurrency 與工程化結構的小型 Go Backend 專案。
 
-## 課堂進度紀錄（最後更新：2026-11-10）
+## 課堂進度紀錄（最後更新：2026-11-12）
 
-> **目前狀態：第 1–4 堂已完成；第 5 堂 CLI Application 進行中，Task 22–27 均已完成驗收。** 已實作 `list`、`add` 子命令；`parseCommand()` 回傳 `CLICommand`，`runCLI()` 使用 `*todo.Service` 與 `io.Writer`。
-> **下次上課直接從「第 5 堂 — Task 28：stderr、Exit Code 與可測試的 main()」開始。** 不要重講 Task 01–27，不要重新要求完成 Task 26 或 Task 27。
-> **Task 28 核心**：導入 `runApp(args []string, stdout io.Writer, stderr io.Writer) int`；正常輸出走 stdout，錯誤走 stderr，成功回傳 0／失敗回傳 1；`os.Exit` 僅由 `main()` 處理。先問思考題，再讓學員自行實作及測試。
-> **任何進度及驗收結論都以當次使用者實際提供的最新專案內容為準；本檔是續課定位，不代表歷史 ZIP 已自動整合最新提交。**
+> **目前狀態：第 1–4 堂已完成；第 5 堂 CLI Application 進行中，Task 22–28 均已完成驗收。** `list`、`add` 子命令、`parseCommand()`、`runCLI()`、`runApp()`，以及 stdout／stderr 分流、Exit Code 與必要測試均已完成。
+> **下次上課直接從「第 5 堂 — Task 29：新增 `done` 子命令」開始。** 不要重講 Task 01–28、不要重新要求 Task 28 的測試補強。
+> **Task 29 起點**：先延續學員尚未回答的設計思考題——`done 3` 的 ID 應在 `parseCommand()` 驗證後保留字串（A），還是修改 `CLICommand` 以儲存已解析的整數 ID（B）？先讓學員回答與討論取捨，再開始小步實作 `parseCommand()` 的 `done` 分支；**暫不要求同時實作 `runCLI()`**。
+> **版本注意**：本檔是續課進度紀錄；舊 `go-todo-cli.zip` 尚未自動整合後續單獨上傳的 `main.go`／`main_test.go`。任何進度與驗收都須以當次能取得的最新程式為準。
 
 ### 第 1 堂已完成內容
 
@@ -151,17 +151,17 @@
 
 ### 最近一次專案狀態與整合注意事項
 
-- **最新提交（2026-11-10）**：學員另行上傳最新 `main.go` 與 `main_test.go`，完成 Task 27 修正並通過該任務核心驗收。原本 `go-todo-cli.zip` 及其內的 `main.go`、`main_test.go`、`class.md` 可能是較舊快照；**續課應以最新單獨上傳的程式檔為準**，不要把舊 ZIP 視為較新的程式碼。
+- **最新提交（2026-11-12）**：學員先後上傳新版 `main.go`、多版 `main_test.go`，完成 Task 28 與相關測試補強。`main()` 的子命令分支會呼叫 `runApp()` 並透過 `os.Exit(exitCode)` 回傳程序狀態；`runApp()` 依序執行 `parseCommand`、建立 JSONRepository／Service、`runCLI`，錯誤輸出 stderr 並回傳 1，成功回傳 0；無參數時保留 `runInteractive()`。最新 `main_test.go` 已補強成功輸出、Fake Repository 狀態、`errors.Is`、儲存失敗不顯示成功訊息與各個子測試獨立的 Buffer。**續課應優先使用這些單獨上傳的最新程式檔**，不要以舊 ZIP 覆蓋。
 - **歷史提交（2026-11-07）**：學員曾另外上傳 `service.go` 與 `service_test.go`，完成 Task 21 `AddAndSave()`。此記錄為歷史背景，非下次課程起點。
 - **最新 Service API**：`NewService(initial []Todo)`、`NewServiceWithRepository(repo TodoRepository)`、`Add`、`List`、`Complete`、`Delete`、`Search`、`Save`、`AddAndSave`。Service 包含 `todos []Todo` 與 `repo TodoRepository`。
 - **其他既有 API**：`TodoReader`、`CountPending`、`StatsService`、`NewStatsService`、`TodoRepository`、`storage.JSONRepository`、`NewJSONRepository`；Module 路徑為 `todo-cli`，依最新實際專案為準。
 - **Fake Repository 行為**：`Load()` 直接回傳 `r.todos`，`Save()` 成功時直接指派傳入的 Slice；此處是有意設計，用來測試 Service 的 Ownership 保護，不必把 Fake 一律改成 Clone。
 - **前次驗證**：第 4 堂 Task 21 的 Code Review 回覆表示，`go test -count=1 ./...` 與 `go vet ./...` 通過；因執行環境為 Go 1.23.2，僅在暫存副本調整 `go.mod` 版本宣告，原專案 Go 1.25.5 宣告未變。這是歷史驗證紀錄，不保證下次修改後仍通過。
-- **後續注意**：下次從 Task 28 的 `main()` 錯誤輸出及 Exit Code 開始，先核對最新程式，再動手實作；不要因舊 ZIP 缺少已完成的修改而倒退重教。
+- **後續注意**：下次從 Task 29 的 `done` 子命令開始；先核對最新程式與學員的設計選擇，再進入 `parseCommand()` 的增量修改，不要因舊 ZIP 缺少 Task 28 而倒退重教。
 
-### 第 5 堂原始學習路線（歷史規劃；以文末 2026-11-10 續課更新為準）
+### 第 5 堂原始學習路線（歷史規劃；以本文最末 2026-11-12 續課更新為準）
 
-**Task 22–27 已完成，不要再把下列初期規劃當成下一次作業。** 本節保留第 5 堂的整體演進目標供參考。
+**Task 22–28 已完成，不要再把下列初期規劃當成下一次作業。** 本節保留第 5 堂的整體演進目標供參考。
 
 1. **開課先檢查**：使用者當次提供的最新 `main.go`、`go.mod`，確認目前命令互動流程、Service／Repository 的初始化方式、錯誤輸出，以及已有的測試。不假設歷史 ZIP 是最新版。
 2. **第一階段主題**：先理解 `os.Args`、CLI 子命令（subcommand）與參數驗證；必要時介紹 `flag`／`flag.FlagSet`，但依當前程式複雜度漸進安排。
@@ -319,9 +319,9 @@
 ## 開課與續課規則
 
 - **有進度紀錄時：** 先閱讀本文「課堂進度紀錄」及使用者當次提供的最新專案內容，從尚未完成的任務接續；不要直接假設先前檔案仍是最新版本。
-- **本次指定續課位置：** **第 5 堂 — Task 28「stderr、Exit Code 與可測試的 main()」**。Task 01–27 已完成核心驗收；不要重新授課或要求重做。
-- **開課第一步：** 核對最新提交的 `main.go`／`main_test.go`（單獨上傳檔可能比 ZIP 更新），確認目前 `parseCommand()`、`runCLI()` 的狀態與尚未處理的錯誤輸出問題。
-- **接著開始 Task 28：** 先討論為何 `runApp()` 回傳 `int` 而不直接呼叫 `os.Exit()`，再讓學員自行實作可測試的程序進入點、stdout／stderr 分流與 Exit Code 測試；不要再從 `os.Args` 基礎與 `list`／`add` 開始。
+- **本次指定續課位置：** **第 5 堂 — Task 29「新增 `done` 子命令」**。Task 01–28 已完成核心驗收，不要重新授課或要求重做。
+- **開課第一步：** 核對當次可取得的最新 `main.go`／`main_test.go`（單獨上傳檔可能比 ZIP 更新），確認 `parseCommand()`、`runCLI()` 與 `runApp()` 的現況。
+- **接著開始 Task 29：** 從已提出但尚未回答的 ID 建模設計思考題（A：驗證後仍保留字串、執行時再轉換；B：`CLICommand` 保存已轉換整數）續課。討論選擇後僅布置 `parseCommand()` 對 `done` 的解析與驗證，不要直接交付完整答案或同時要求整合 `runCLI()`。
 - **不提前跳到 SQLite 或 REST API：** 先完成 CLI 的命令解析、參數驗證與責任分層，保持單一課程階段的適當工作量。
 - **舊版整合提示：** 如 `todo_test.go`、`service_test.go` 含同名測試導致編譯失敗，提醒移除重複舊測試，而不是重做已通過的 Service；留意 CRLF／gofmt 差異。
 - **若未來沒有任何進度紀錄：** 才從「第 1 堂：完整單元測試 + Slice 深入」開始。
@@ -372,7 +372,7 @@
 
 ---
 
-## 最新續課更新（2026-11-10）— 第 5 堂 Task 26–27 完成，下一次從 Task 28 開始
+## 歷史續課更新（2026-11-10）— 第 5 堂 Task 26–27 完成，當時預定 Task 28（已完成）
 
 ### 已完成：Task 26 — CLI 與 Service 解耦
 
@@ -392,7 +392,7 @@
 - **上一輪 Code Review 結論：Task 27 核心功能驗收通過。** 該輪回覆表示 `go test -count=1 ./...`、`go vet ./...` 均通過，且額外診斷涵蓋新增輸出、儲存失敗傳遞、狀態維持及 Tab／換行空白驗證。此為歷史驗收紀錄，並非每次續課都已重新執行。
 - **非阻擋測試補強，建議在 Task 28 一併補上**：`TestRunCLI_Add` 目前只驗證 `service.List()`，還應確認 `fakeRepo.todos` 與成功輸出 `buf.String()`；`TestRunCLI_Add_SaveFailed` 已檢查有 Error 和 Service 狀態不變，還可用 `errors.Is` 驗證錯誤、檢查 Repository 狀態不變以及無成功訊息。這些補強不影響 Task 27 已通過的結論。
 
-### 下一次正式開課位置：第 5 堂 — Task 28：stderr、Exit Code 與可測試的 main()
+### 當時預定的開課位置（歷史紀錄，已完成）：第 5 堂 — Task 28：stderr、Exit Code 與可測試的 main()
 
 **不要重講 Task 01–27，也不要提前進入 `done`／`delete`／`search`、SQLite 或 REST API。** 按照「問題 → 原因 → Go 概念 → 小任務 → 學員提交 → Code Review」延續課程。
 
@@ -412,3 +412,47 @@
 **教學提示**：要說清楚 `return` 離開 `main()` 不等於非零 Exit Code；stdout 是正常資料，stderr 是錯誤／診斷輸出；`os.Exit` 屬於進程控制，應只留在程式最外層。提供函式簽章與必要提示即可，**不要直接替學員寫出整份 Task 28 解答**。等學員回答思考題並提交程式後再進行驗收。
 
 **檔案版本提醒**：本檔已更新至 Task 28，但同一份舊 ZIP 中的 `main.go`、`main_test.go` 可能仍是 Task 25 左右的版本。再次開課時應優先使用 2026-11-10 另行上傳的最新版，若無法取得則請學員提供最新檔案，不要據舊 ZIP 否定已驗收的 Task 26–27。
+
+
+---
+
+## 最新續課更新（2026-11-12）— 第 5 堂 Task 28 已完成，下次從 Task 29 開始
+
+> **此節為目前有效的最新續課定位；上方日期較早的 Task 28 布置與「下次開始」文字僅屬歷史紀錄，不應再當作未完成作業。**
+
+### Task 28 已完成並驗收 — stderr、Exit Code 與可測試的 main()
+
+- 學員實作 `func runApp(args []string, stdout io.Writer, stderr io.Writer) int`：先 `parseCommand(args)`；合法才建立 `storage.NewJSONRepository("todos.json")` 與 `todo.NewServiceWithRepository(repo)`，再呼叫 `runCLI(command, service, stdout)`；錯誤使用 `fmt.Fprintln(stderr, err)`，回傳 Exit Code `1`；成功回傳 `0`。
+- `main()` 保留「沒有命令列參數時進入 `runInteractive()`」；有參數時執行 `exitCode := runApp(os.Args[1:], os.Stdout, os.Stderr)` 並 `os.Exit(exitCode)`。目前無參數分支使用 `os.Exit(0)`；老師指出改成 `return` 可讓 `main()` 中的 `defer` 正常執行，**這是可選風格改善，非 Task 28 阻擋項**。
+- `main_test.go` 新增 `TestRunAppCommand_Error` table-driven tests：未知命令、`add` 缺少標題、`list` 多餘參數；分別檢查 Exit Code `1`、stdout 空、stderr 包含對應錯誤；每個 `t.Run` 內自行建立 `bytes.Buffer`，沒有共用污染問題。
+- `TestRunCLI_Add` 補上成功輸出（包含 `2. Sleep 添加成功`）與 `fakeRepo.todos` 等於期望 Todo 清單的檢查；`TestRunCLI_Add_SaveFailed` 補上 `errors.Is(err, saveError)`、Fake Repository 狀態不變、沒有輸出「添加成功」；原本 Service 狀態不變的檢查保留。
+- 學員正確理解：`os.Exit` 會直接終止 Process、不會執行當前或其他函式中尚未執行的 `defer`；若 `runApp()` 已經正常 `return`，則其 `defer` 已先完成。`%w` 保留錯誤鏈，而 `%v` 不保留可供 `errors.Is` 遍歷的原始錯誤關聯。
+- 已討論 Unit Test、Integration Test、End-to-End Test 的測試範圍：`runApp()` 單元測試通過不代表 `main()` 一定有正確將 Exit Code 傳給作業系統；學員修正後有補上外部執行檢驗。
+- 已釐清 **Service 管理應用程式中的 Todo 狀態；Repository 負責載入／儲存**。`fakeRepository` 只是記憶體中的模擬實作，檢查 `fakeRepo.todos` 不能視為真實 JSON 檔案持久化測試。`AddAndSave` 是先 Save 候選資料，成功才更新 Service 狀態；失敗時維持舊狀態。
+- **歷史驗收結論**：上次對話回覆記錄：使用單獨提交的最新版 `main.go`／`main_test.go` 在暫存副本執行 `go test -count=1 ./...`、`go vet ./...`、`go build` 均通過，CLI 未知命令／缺參數／多參數的 Exit Code 為 `1`。環境為 Go 1.23.2，僅暫時調整副本的 `go.mod` 宣告，沒有修改原始專案。這是前次對話的驗收紀錄，**不是本次更新 `class.md` 時重新跑的測試**。
+- **Task 28 正式結束**；不要重新要求同一組測試、不要重講 stdout／stderr、`os.Exit` 或 Fake Repository 概念，除非學員後續實作有新問題。
+
+### 下次正式開課：第 5 堂 — Task 29：新增 `done` 子命令
+
+**功能目標**：逐步支援 `todo done 3`，將正整數 ID 對應的 Todo 標記完成。第一步先在 `parseCommand()` 中解析與驗證 `done`，**暫時不改 `runCLI()`**；待學員完成第一階段後再處理執行／儲存流程。
+
+**起始設計思考題（已布置，尚未得到學員回答）：**
+
+- **A**：`parseCommand()` 以 `strconv.Atoi()` 驗證 ID，但 `CLICommand.Args` 保留字串 `"3"`，`runCLI()` 使用時再解析。
+- **B**：調整 `CLICommand` 結構，使其能儲存已解析的整數 ID，避免重複轉換。
+- **下次開課先請學員選擇 A 或 B，說明原因。** 先討論解析責任、型別安全、結構複雜度與擴充性，不要預先宣告唯一答案；沿用以學員自行思考實作為主的課程模式。
+
+**Task 29 第一階段預期案例**（不在續課檔直接提供完成程式碼）：
+
+| 輸入參數 | 預期行為 |
+| --- | --- |
+| `[]string{"done", "3"}` | 合法命令，成功解析 |
+| `[]string{"done"}` | 缺少 ID 錯誤 |
+| `[]string{"done", "abc"}` | 非數字 ID 錯誤 |
+| `[]string{"done", "0"}` | 非法 ID 錯誤 |
+| `[]string{"done", "-1"}` | 非法 ID 錯誤 |
+| `[]string{"done", "3", "extra"}` | 參數過多錯誤 |
+
+**教學原則**：先確認最新源碼，延續「問題 → 原因 → Go 概念 → 小任務 → 學員提交 → Code Review → 驗收」；暫不進入 `delete`、`search`、SQLite、REST API 或完整多命令改寫。沿用標準函式庫與既有專案結構。
+
+**文件與程式碼版本提醒**：本次僅更新 `class.md` 的教學進度。歷史 ZIP 不是已更新到 Task 28 的整合版；下次若需要完整專案，請優先使用學員當次提供的最新檔案，避免拿舊 ZIP 快照當成最新成果。
