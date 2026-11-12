@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 	"todo-cli/todo"
 )
@@ -253,4 +254,49 @@ func TestRunCLI_Add_SaveFailed(t *testing.T) {
 	if !slices.Equal(wanted, got) {
 		t.Errorf("expcted %v, got %v", wanted, got)
 	}
+}
+
+func TestRunAppCommand_Error(t *testing.T) {
+	tests := []struct {
+		name         string
+		args         []string
+		errorMessage string
+	}{
+		{
+			name:         "unknown command",
+			args:         []string{"unknown"},
+			errorMessage: "unknown command",
+		},
+		{
+			name:         "add missing title",
+			args:         []string{"add"},
+			errorMessage: "add missing title",
+		},
+		{
+			name:         "too many arguments",
+			args:         []string{"list", "extra"},
+			errorMessage: "too many arguments",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			exitCode := runApp(tt.args, &stdout, &stderr)
+
+			if exitCode != 1 {
+				t.Errorf("expected 1, got %d", exitCode)
+			}
+
+			if stdout.String() != "" {
+				t.Errorf("expected \"\", got %s", stdout.String())
+			}
+
+			if !strings.Contains(stderr.String(), tt.errorMessage) {
+				t.Errorf("unexpected stderr: %q", stderr.String())
+			}
+		})
+	}
+
 }

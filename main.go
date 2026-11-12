@@ -18,25 +18,31 @@ func main() {
 		return
 	}
 
-	args := os.Args[1:]
+	exitCode := runApp(os.Args[1:], os.Stdout, os.Stderr)
+	os.Exit(exitCode)
+}
+
+func runApp(args []string, stdout io.Writer, stderr io.Writer) int {
 	command, err := parseCommand(args)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Fprintln(stderr, err)
+		return 1
 	}
 
 	repo := storage.NewJSONRepository("todos.json")
 	service, err := todo.NewServiceWithRepository(repo)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Fprintln(stderr, err)
+		return 1
 	}
 
-	err = runCLI(command, service, os.Stdout)
+	err = runCLI(command, service, stdout)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Fprintln(stderr, err)
+		return 1
 	}
+
+	return 0
 }
 
 func runCLI(command CLICommand, service *todo.Service, w io.Writer) error {
