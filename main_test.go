@@ -215,6 +215,10 @@ func TestRunCLI_Add(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if !strings.Contains(buf.String(), "2. Sleep 添加成功") {
+		t.Errorf("unexpected stdout: %q", buf.String())
+	}
+
 	got := service.List()
 	wanted := []todo.Todo{
 		{ID: 1, Title: "Learn Go"},
@@ -224,15 +228,20 @@ func TestRunCLI_Add(t *testing.T) {
 	if !slices.Equal(wanted, got) {
 		t.Errorf("expcted %v, got %v", wanted, got)
 	}
+
+	if !slices.Equal(wanted, fakeRepo.todos) {
+		t.Errorf("expcted %v, got %v", wanted, fakeRepo.todos)
+	}
 }
 
 func TestRunCLI_Add_SaveFailed(t *testing.T) {
 	todos := []todo.Todo{
 		{ID: 1, Title: "Learn Go"},
 	}
+	saveError := errors.New("save failed")
 	fakeRepo := &fakeRepository{
 		todos:     todos,
-		saveError: errors.New("save failed"),
+		saveError: saveError,
 	}
 	service, err := todo.NewServiceWithRepository(fakeRepo)
 	if err != nil {
@@ -242,8 +251,12 @@ func TestRunCLI_Add_SaveFailed(t *testing.T) {
 	var buf bytes.Buffer
 
 	err = runCLI(CLICommand{Name: "add", Args: []string{"Sleep"}}, service, &buf)
-	if err == nil {
+	if !errors.Is(err, saveError) {
 		t.Fatal("expected save error")
+	}
+
+	if buf.Len() != 0 {
+		t.Errorf("unexpected stdout: %q", buf.String())
 	}
 
 	got := service.List()
@@ -253,6 +266,10 @@ func TestRunCLI_Add_SaveFailed(t *testing.T) {
 
 	if !slices.Equal(wanted, got) {
 		t.Errorf("expcted %v, got %v", wanted, got)
+	}
+
+	if !slices.Equal(wanted, fakeRepo.todos) {
+		t.Errorf("expcted %v, got %v", wanted, fakeRepo.todos)
 	}
 }
 
