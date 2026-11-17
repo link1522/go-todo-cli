@@ -91,6 +91,11 @@ func TestParseCommand(t *testing.T) {
 			args:   []string{"add", "Learn Go"},
 			wanted: CLICommand{Name: "add", Args: []string{"Learn Go"}},
 		},
+		{
+			name:   "done command",
+			args:   []string{"done", "3"},
+			wanted: CLICommand{Name: "done", ID: 3},
+		},
 	}
 
 	for _, tt := range tests {
@@ -103,6 +108,9 @@ func TestParseCommand(t *testing.T) {
 
 			if command.Name != tt.wanted.Name {
 				t.Errorf("expected %s, got %s", tt.wanted.Name, command.Name)
+			}
+			if command.ID != tt.wanted.ID {
+				t.Errorf("expected %d, got %d", tt.wanted.ID, command.ID)
 			}
 			if !slices.Equal(command.Args, tt.wanted.Args) {
 				t.Errorf("expected %v, got %v", tt.wanted.Args, command.Args)
@@ -152,6 +160,31 @@ func TestParseCommand_Failed(t *testing.T) {
 			args:         []string{"add", "Learn", "Go"},
 			errorMessage: "too many arguments",
 		},
+		{
+			name:         "done missing id",
+			args:         []string{"done"},
+			errorMessage: "done missing ID",
+		},
+		{
+			name:         "done id is not a int",
+			args:         []string{"done", "abc"},
+			errorMessage: "ID must be an integer",
+		},
+		{
+			name:         "done id should greater than zero (0)",
+			args:         []string{"done", "0"},
+			errorMessage: "ID must be greater than zero",
+		},
+		{
+			name:         "done id should greater than zero (-1)",
+			args:         []string{"done", "-1"},
+			errorMessage: "ID must be greater than zero",
+		},
+		{
+			name:         "done too many args",
+			args:         []string{"done", "3", "extra"},
+			errorMessage: "too many arguments",
+		},
 	}
 
 	for _, tt := range tests {
@@ -166,7 +199,13 @@ func TestParseCommand_Failed(t *testing.T) {
 			}
 
 			if command.Name != "" {
-				t.Errorf("expected empty command, got %s", command.Name)
+				t.Errorf("expected command name '', got %s", command.Name)
+			}
+			if command.ID != 0 {
+				t.Errorf("expected command ID 0, got %d", command.ID)
+			}
+			if len(command.Args) > 0 {
+				t.Errorf("expected length of command args to be 0, got %d", len(command.Args))
 			}
 		})
 	}

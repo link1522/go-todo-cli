@@ -197,6 +197,22 @@ func parseCommand(args []string) (CLICommand, error) {
 			return CLICommand{}, errors.New("add empty title")
 		}
 		return CLICommand{Name: "add", Args: []string{args[1]}}, nil
+	case "done":
+		if len(args) > 2 {
+			return CLICommand{}, errors.New("too many arguments")
+		}
+		if len(args) < 2 {
+			return CLICommand{}, errors.New("done missing ID")
+		}
+
+		id, err := strconv.Atoi(args[1])
+		if err != nil {
+			return CLICommand{}, errors.New("ID must be an integer")
+		}
+		if id <= 0 {
+			return CLICommand{}, errors.New("ID must be greater than zero")
+		}
+		return CLICommand{Name: "done", ID: id}, nil
 	default:
 		return CLICommand{}, errors.New("unknown command")
 	}
@@ -205,4 +221,5 @@ func parseCommand(args []string) (CLICommand, error) {
 type CLICommand struct {
 	Name string
 	Args []string
+	ID   int
 }
