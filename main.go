@@ -55,6 +55,12 @@ func runCLI(command CLICommand, service *todo.Service, w io.Writer) error {
 			return err
 		}
 		fmt.Fprintf(w, "%d. %s 添加成功\n", todo.ID, todo.Title)
+	case "done":
+		err := service.CompleteAndSave(command.ID)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(w, "%d 已完成\n", command.ID)
 	default:
 		return errors.New("unknown command")
 	}
