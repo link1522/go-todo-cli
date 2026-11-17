@@ -90,3 +90,25 @@ func (s *Service) AddAndSave(title string) (Todo, error) {
 
 	return newTodo, nil
 }
+
+func (s *Service) CompleteAndSave(id int) error {
+	if s.repo == nil {
+		return errors.New("repository not exists")
+	}
+
+	candidate := slices.Clone(s.todos)
+
+	found := CompleteTodo(candidate, id)
+	if !found {
+		return &TodoNotFoundError{ID: id}
+	}
+
+	err := s.repo.Save(slices.Clone(candidate))
+	if err != nil {
+		return fmt.Errorf("save todos failed: %w", err)
+	}
+
+	s.todos = candidate
+
+	return nil
+}
