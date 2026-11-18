@@ -112,3 +112,25 @@ func (s *Service) CompleteAndSave(id int) error {
 
 	return nil
 }
+
+func (s *Service) DeleteAndSave(id int) error {
+	if s.repo == nil {
+		return errors.New("repository not exists")
+	}
+
+	candidate := slices.Clone(s.todos)
+
+	updated, err := DeleteTodo(candidate, id)
+	if err != nil {
+		return fmt.Errorf("delete todos failed: %w", err)
+	}
+
+	err = s.repo.Save(slices.Clone(updated))
+	if err != nil {
+		return fmt.Errorf("save todos failed: %w", err)
+	}
+
+	s.todos = updated
+
+	return nil
+}

@@ -480,7 +480,7 @@ func TestTodoService_CompleteAndSave(t *testing.T) {
 	}
 }
 
-func TestTodoService_CompleteAndSaveIDNotFound(t *testing.T) {
+func TestTodoService_CompleteAndSave_IDNotFound(t *testing.T) {
 	initTodos := []Todo{
 		{ID: 1, Title: "aaaa"},
 		{ID: 2, Title: "bbbb"},
@@ -518,7 +518,7 @@ func TestTodoService_CompleteAndSaveIDNotFound(t *testing.T) {
 	}
 }
 
-func TestTodoService_CompleteAndSaveFailed(t *testing.T) {
+func TestTodoService_CompleteAndSave_Failed(t *testing.T) {
 	initTodos := []Todo{
 		{ID: 1, Title: "aaaa"},
 		{ID: 2, Title: "bbbb"},
@@ -552,7 +552,7 @@ func TestTodoService_CompleteAndSaveFailed(t *testing.T) {
 	}
 }
 
-func TestTodoService_CompleteAndSaveServiceWithoutRepo(t *testing.T) {
+func TestTodoService_CompleteAndSave_ServiceWithoutRepo(t *testing.T) {
 	initTodos := []Todo{
 		{ID: 1, Title: "aaaa"},
 		{ID: 2, Title: "bbbb"},
@@ -570,7 +570,7 @@ func TestTodoService_CompleteAndSaveServiceWithoutRepo(t *testing.T) {
 	}
 }
 
-func TestTodoService_CompleteAndSaveAlreadyDone(t *testing.T) {
+func TestTodoService_CompleteAndSave_AlreadyDone(t *testing.T) {
 	initTodos := []Todo{
 		{ID: 1, Title: "aaaa", Done: true},
 		{ID: 2, Title: "bbbb"},
@@ -605,7 +605,7 @@ func TestTodoService_CompleteAndSaveAlreadyDone(t *testing.T) {
 	}
 }
 
-func TestTodoService_CompleteAndSaveOwnership(t *testing.T) {
+func TestTodoService_CompleteAndSave_Ownership(t *testing.T) {
 	repo := &fakeRepository{
 		todos: []Todo{
 			{ID: 1, Title: "Learn Go"},
@@ -627,5 +627,131 @@ func TestTodoService_CompleteAndSaveOwnership(t *testing.T) {
 
 	if !got[0].Done {
 		t.Errorf("Service todo Done status was modified: %t", got[0].Done)
+	}
+}
+
+func TestTodoService_DeleteAndSave(t *testing.T) {
+	initTodos := []Todo{
+		{ID: 1, Title: "aaaa"},
+		{ID: 2, Title: "bbbb"},
+		{ID: 3, Title: "cccc"},
+	}
+	fakeRepo := fakeRepository{todos: initTodos}
+	service, err := NewServiceWithRepository(&fakeRepo)
+	if err != nil {
+		t.Fatalf("got error: %v", err)
+	}
+
+	err = service.DeleteAndSave(2)
+	if err != nil {
+		t.Errorf("got error: %v", err)
+	}
+
+	wanted := []Todo{
+		{ID: 1, Title: "aaaa"},
+		{ID: 3, Title: "cccc"},
+	}
+	got := service.List()
+
+	if !slices.Equal(wanted, got) {
+		t.Errorf("expected %v, got %v", wanted, got)
+	}
+
+	gotByRepo, err := service.repo.Load()
+	if err != nil {
+		t.Fatalf("got error %v", err)
+	}
+	if !slices.Equal(wanted, gotByRepo) {
+		t.Errorf("expected %v, got %v", wanted, gotByRepo)
+	}
+}
+
+func TestTodoService_DeleteAndSave_IDNotFound(t *testing.T) {
+	initTodos := []Todo{
+		{ID: 1, Title: "aaaa"},
+		{ID: 2, Title: "bbbb"},
+	}
+	fakeRepo := fakeRepository{todos: initTodos}
+	service, err := NewServiceWithRepository(&fakeRepo)
+	if err != nil {
+		t.Fatalf("got error: %v", err)
+	}
+
+	targetID := 99
+	err = service.DeleteAndSave(targetID)
+	if !errors.Is(err, ErrTodoNotFound) {
+		t.Errorf("expect error %v, got %v", ErrTodoNotFound, err)
+	}
+	var notFoundErr *TodoNotFoundError
+	if !errors.As(err, &notFoundErr) {
+		t.Fatalf("expected error %v, got %v", notFoundErr, err)
+	}
+	if notFoundErr.ID != targetID {
+		t.Errorf("expected %d, got %d", targetID, notFoundErr.ID)
+	}
+
+	got := service.List()
+	if !slices.Equal(initTodos, got) {
+		t.Errorf("expected %v, got %v", initTodos, got)
+	}
+
+	gotByRepo, err := service.repo.Load()
+	if err != nil {
+		t.Fatalf("got error %v", err)
+	}
+	if !slices.Equal(initTodos, gotByRepo) {
+		t.Errorf("expected %v, gotByRepo %v", initTodos, gotByRepo)
+	}
+}
+
+func TestTodoService_DeleteAndSave_SaveFailed(t *testing.T) {
+	initTodos := []Todo{
+		{ID: 1, Title: "aaaa"},
+		{ID: 2, Title: "bbbb"},
+	}
+	saveError := errors.New("save failed")
+	fakeRepo := fakeRepository{
+		todos:     initTodos,
+		saveError: saveError,
+	}
+	service, err := NewServiceWithRepository(&fakeRepo)
+	if err != nil {
+		t.Fatalf("got error: %v", err)
+	}
+
+	err = service.DeleteAndSave(1)
+	if !errors.Is(err, saveError) {
+		t.Error("expect got error when saving failed")
+	}
+
+	got := service.List()
+	if !slices.Equal(initTodos, got) {
+		t.Errorf("expected %v, got %v", initTodos, got)
+	}
+
+	gotByRepo, err := service.repo.Load()
+	if err != nil {
+		t.Fatalf("got error %v", err)
+	}
+	if !slices.Equal(initTodos, gotByRepo) {
+		t.Errorf("expected %v, gotByRepo %v", initTodos, gotByRepo)
+	}
+}
+
+func TestTodoService_DeleteAndSave_ServiceWithoutRepo(t *testing.T) {
+	initTodos := []Todo{
+		{ID: 1, Title: "aaaa"},
+		{ID: 2, Title: "bbbb"},
+	}
+	service := NewService(initTodos)
+
+	err := service.DeleteAndSave(1)
+	if err == nil {
+		t.Error("expect repository not exists error")
+	}
+
+	got := service.List()
+	if !slices.Equal(initTodos, got) {
+		t.Errorf("expected %v, got %v", initTodos, got)
 	}
 }
