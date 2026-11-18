@@ -550,3 +550,116 @@ func TestParsePositiveID_Failed(t *testing.T) {
 		})
 	}
 }
+
+func TestRunCLI_Delete(t *testing.T) {
+	todos := []todo.Todo{
+		{ID: 1, Title: "Learn Go"},
+		{ID: 2, Title: "Learn Python"},
+		{ID: 3, Title: "Learn Rust"},
+	}
+	fakeRepo := &fakeRepository{
+		todos: todos,
+	}
+	service, err := todo.NewServiceWithRepository(fakeRepo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+
+	err = runCLI(CLICommand{Name: "delete", ID: 2}, service, &buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wantedMsg := "2 刪除成功"
+	if !strings.Contains(buf.String(), wantedMsg) {
+		t.Errorf("unexpected stdout: %q", buf.String())
+	}
+
+	got := service.List()
+	wanted := []todo.Todo{
+		{ID: 1, Title: "Learn Go"},
+		{ID: 3, Title: "Learn Rust"},
+	}
+	if !slices.Equal(wanted, got) {
+		t.Errorf("expected %v, got %v", wanted, got)
+	}
+
+	if !slices.Equal(wanted, fakeRepo.todos) {
+		t.Errorf("expected %v, got %v", wanted, fakeRepo.todos)
+	}
+}
+
+func TestRunCLI_Delete_NotFound(t *testing.T) {
+	todos := []todo.Todo{
+		{ID: 1, Title: "Learn Go"},
+	}
+	fakeRepo := &fakeRepository{
+		todos: todos,
+	}
+	service, err := todo.NewServiceWithRepository(fakeRepo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+
+	targetID := 99
+	err = runCLI(CLICommand{Name: "delete", ID: targetID}, service, &buf)
+	if !errors.Is(err, todo.ErrTodoNotFound) {
+		t.Errorf("expect error %v, got %v", todo.ErrTodoNotFound, err)
+	}
+	var notFoundErr *todo.TodoNotFoundError
+	if !errors.As(err, &notFoundErr) {
+		t.Fatalf("expect error %v, got %v", notFoundErr, err)
+	}
+	if notFoundErr.ID != targetID {
+		t.Errorf("expect ID %d, got %d", targetID, notFoundErr.ID)
+	}
+
+	if buf.Len() != 0 {
+		t.Errorf("unexpected stdout: %q", buf.String())
+	}
+
+	got := service.List()
+	wanted := []todo.Todo{
+		{ID: 1, Title: "Learn Go"},
+	}
+	if !slices.Equal(wanted, got) {
+		t.Errorf("expected %v, got %v", wanted, got)
+	}
+}
+
+func TestRunCLI_Delete_SaveFailed(t *testing.T) {
+	todos := []todo.Todo{
+		{ID: 1, Title: "Learn Go"},
+	}
+	saveError := errors.New("save failed")
+	fakeRepo := &fakeRepository{
+		todos:     todos,
+		saveError: saveError,
+	}
+	service, err := todo.NewServiceWithRepository(fakeRepo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+
+	err = runCLI(CLICommand{Name: "delete", ID: 1}, service, &buf)
+	if !errors.Is(err, saveError) {
+		t.Fatal("expected save error")
+	}
+	if len(buf.String()) != 0 {
+		t.Errorf("unexpected stdout: %q", buf.String())
+	}
+
+	got := service.List()
+	wanted := []todo.Todo{
+		{ID: 1, Title: "Learn Go"},
+	}
+	if !slices.Equal(wanted, got) {
+		t.Errorf("expected %v, got %v", wanted, got)
+	}
+	if !slices.Equal(wanted, fakeRepo.todos) {
+		t.Errorf("expected %v, got %v", wanted, fakeRepo.todos)
+	}
+}
