@@ -96,6 +96,11 @@ func TestParseCommand(t *testing.T) {
 			args:   []string{"done", "3"},
 			wanted: CLICommand{Name: "done", ID: 3},
 		},
+		{
+			name:   "delete command",
+			args:   []string{"delete", "3"},
+			wanted: CLICommand{Name: "delete", ID: 3},
+		},
 	}
 
 	for _, tt := range tests {
@@ -160,6 +165,7 @@ func TestParseCommand_Failed(t *testing.T) {
 			args:         []string{"add", "Learn", "Go"},
 			errorMessage: "too many arguments",
 		},
+
 		{
 			name:         "done missing id",
 			args:         []string{"done"},
@@ -183,6 +189,32 @@ func TestParseCommand_Failed(t *testing.T) {
 		{
 			name:         "done too many args",
 			args:         []string{"done", "3", "extra"},
+			errorMessage: "too many arguments",
+		},
+
+		{
+			name:         "delete missing id",
+			args:         []string{"delete"},
+			errorMessage: "delete missing ID",
+		},
+		{
+			name:         "delete id is not a int",
+			args:         []string{"delete", "abc"},
+			errorMessage: "ID must be an integer",
+		},
+		{
+			name:         "delete 0",
+			args:         []string{"delete", "0"},
+			errorMessage: "ID must be greater than zero",
+		},
+		{
+			name:         "delete -1",
+			args:         []string{"delete", "-1"},
+			errorMessage: "ID must be greater than zero",
+		},
+		{
+			name:         "delete too many args",
+			args:         []string{"delete", "3", "extra"},
 			errorMessage: "too many arguments",
 		},
 	}
@@ -463,5 +495,58 @@ func TestRunCLI_Done_SaveFailed(t *testing.T) {
 	}
 	if !slices.Equal(wanted, fakeRepo.todos) {
 		t.Errorf("expected %v, got %v", wanted, fakeRepo.todos)
+	}
+}
+
+func TestParsePositiveID(t *testing.T) {
+	id, err := parsePositiveID("3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id != 3 {
+		t.Errorf("expected %d, got %d", 3, id)
+	}
+}
+
+func TestParsePositiveID_Failed(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wanted   int
+		errorMsg string
+	}{
+		{
+			name:     "not integer",
+			input:    "abc",
+			wanted:   0,
+			errorMsg: "ID must be an integer",
+		},
+		{
+			name:     "zero",
+			input:    "0",
+			wanted:   0,
+			errorMsg: "ID must be greater than zero",
+		},
+		{
+			name:     "-1",
+			input:    "-1",
+			wanted:   0,
+			errorMsg: "ID must be greater than zero",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			id, err := parsePositiveID(tt.input)
+			if err == nil {
+				t.Fatalf("expected error: %s", tt.errorMsg)
+			}
+			if id != 0 {
+				t.Errorf("expected id 0 when failed, but got %d", id)
+			}
+			if !strings.Contains(err.Error(), tt.errorMsg) {
+				t.Errorf("unexpected error message: %v", err)
+			}
+		})
 	}
 }

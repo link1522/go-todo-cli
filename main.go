@@ -211,17 +211,38 @@ func parseCommand(args []string) (CLICommand, error) {
 			return CLICommand{}, errors.New("done missing ID")
 		}
 
-		id, err := strconv.Atoi(args[1])
+		id, err := parsePositiveID(args[1])
 		if err != nil {
-			return CLICommand{}, errors.New("ID must be an integer")
-		}
-		if id <= 0 {
-			return CLICommand{}, errors.New("ID must be greater than zero")
+			return CLICommand{}, err
 		}
 		return CLICommand{Name: "done", ID: id}, nil
+	case "delete":
+		if len(args) > 2 {
+			return CLICommand{}, errors.New("too many arguments")
+		}
+		if len(args) < 2 {
+			return CLICommand{}, errors.New("delete missing ID")
+		}
+
+		id, err := parsePositiveID(args[1])
+		if err != nil {
+			return CLICommand{}, err
+		}
+		return CLICommand{Name: "delete", ID: id}, nil
 	default:
 		return CLICommand{}, errors.New("unknown command")
 	}
+}
+
+func parsePositiveID(raw string) (int, error) {
+	id, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, errors.New("ID must be an integer")
+	}
+	if id <= 0 {
+		return 0, errors.New("ID must be greater than zero")
+	}
+	return id, nil
 }
 
 type CLICommand struct {
