@@ -235,6 +235,17 @@ func parseCommand(args []string) (CLICommand, error) {
 			return CLICommand{}, err
 		}
 		return CLICommand{Name: "delete", ID: id}, nil
+	case "search":
+		if len(args) > 2 {
+			return CLICommand{}, errors.New("too many arguments")
+		}
+		if len(args) < 2 {
+			return CLICommand{}, errors.New("search missing keyword")
+		}
+		if strings.TrimSpace(args[1]) == "" {
+			return CLICommand{}, errors.New("search empty keyword")
+		}
+		return CLICommand{Name: "search", Args: []string{args[1]}}, nil
 	default:
 		return CLICommand{}, errors.New("unknown command")
 	}

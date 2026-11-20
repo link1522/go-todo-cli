@@ -101,6 +101,24 @@ func TestParseCommand(t *testing.T) {
 			args:   []string{"delete", "3"},
 			wanted: CLICommand{Name: "delete", ID: 3},
 		},
+		{
+			name:   "search command",
+			args:   []string{"search", "Go"},
+			wanted: CLICommand{Name: "search", Args: []string{"Go"}},
+		},
+		{
+			name:   "search command 2",
+			args:   []string{"search", "Learn Go"},
+			wanted: CLICommand{Name: "search", Args: []string{"Learn Go"}},
+		},
+		{
+			name: "search preserve whitespace",
+			args: []string{"search", "  Learn Go  "},
+			wanted: CLICommand{
+				Name: "search",
+				Args: []string{"  Learn Go  "},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -215,6 +233,27 @@ func TestParseCommand_Failed(t *testing.T) {
 		{
 			name:         "delete too many args",
 			args:         []string{"delete", "3", "extra"},
+			errorMessage: "too many arguments",
+		},
+
+		{
+			name:         "search missing keyword",
+			args:         []string{"search"},
+			errorMessage: "search missing keyword",
+		},
+		{
+			name:         "search empty keyword",
+			args:         []string{"search", ""},
+			errorMessage: "search empty keyword",
+		},
+		{
+			name:         "search empty keyword (space)",
+			args:         []string{"search", "   "},
+			errorMessage: "search empty keyword",
+		},
+		{
+			name:         "search too many arguments",
+			args:         []string{"search", "Go", "extra"},
 			errorMessage: "too many arguments",
 		},
 	}
