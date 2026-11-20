@@ -67,6 +67,14 @@ func runCLI(command CLICommand, service *todo.Service, w io.Writer) error {
 			return err
 		}
 		fmt.Fprintf(w, "%d 刪除成功\n", command.ID)
+	case "search":
+		todos := service.Search(command.Args[0])
+		if len(todos) == 0 {
+			fmt.Fprint(w, "找不到任何項目\n")
+			break
+		}
+
+		printTodos(w, todos)
 	default:
 		return errors.New("unknown command")
 	}

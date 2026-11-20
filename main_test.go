@@ -702,3 +702,82 @@ func TestRunCLI_Delete_SaveFailed(t *testing.T) {
 		t.Errorf("expected %v, got %v", wanted, fakeRepo.todos)
 	}
 }
+
+func TestRunCLI_Search(t *testing.T) {
+	tests := []struct {
+		name      string
+		todos     []todo.Todo
+		keyword   string
+		wantedMsg string
+	}{
+		{
+			name: "search matched",
+			todos: []todo.Todo{
+				{
+					ID:    1,
+					Title: "Learn Go",
+					Done:  true,
+				},
+				{
+					ID:    2,
+					Title: "Sleep",
+				},
+				{
+					ID:    3,
+					Title: "Learn TS",
+				},
+			},
+			keyword:   "Learn",
+			wantedMsg: "1. [x] Learn Go\n3. [ ] Learn TS\n",
+		},
+		{
+			name: "search not found",
+			todos: []todo.Todo{
+				{
+					ID:    1,
+					Title: "Learn Go",
+					Done:  true,
+				},
+				{
+					ID:    2,
+					Title: "Sleep",
+				},
+				{
+					ID:    3,
+					Title: "Learn TS",
+				},
+			},
+			keyword:   "apple",
+			wantedMsg: "找不到任何項目\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeRepo := &fakeRepository{
+				todos: slices.Clone(tt.todos),
+			}
+			service, err := todo.NewServiceWithRepository(fakeRepo)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var buf bytes.Buffer
+
+			err = runCLI(CLICommand{Name: "search", Args: []string{tt.keyword}}, service, &buf)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if got := buf.String(); got != tt.wantedMsg {
+				t.Errorf("expected %q, got %q", tt.wantedMsg, got)
+			}
+
+			if !slices.Equal(service.List(), tt.todos) {
+				t.Errorf("expected %v, got %v", tt.todos, service.List())
+			}
+			if !slices.Equal(fakeRepo.todos, tt.todos) {
+				t.Errorf("expected %v, got %v", tt.todos, fakeRepo.todos)
+			}
+		})
+	}
+}
