@@ -22,14 +22,14 @@ func main() {
 	os.Exit(exitCode)
 }
 
-func runApp(args []string, stdout io.Writer, stderr io.Writer) int {
+func runAppWithPath(args []string, stdout io.Writer, stderr io.Writer, path string) int {
 	command, err := parseCommand(args)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
 
-	repo := storage.NewJSONRepository("todos.json")
+	repo := storage.NewJSONRepository(path)
 	service, err := todo.NewServiceWithRepository(repo)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
@@ -43,6 +43,10 @@ func runApp(args []string, stdout io.Writer, stderr io.Writer) int {
 	}
 
 	return 0
+}
+
+func runApp(args []string, stdout io.Writer, stderr io.Writer) int {
+	return runAppWithPath(args, stdout, stderr, "todos.json")
 }
 
 func runCLI(command CLICommand, service *todo.Service, w io.Writer) error {

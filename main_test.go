@@ -2,7 +2,10 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -777,6 +780,199 @@ func TestRunCLI_Search(t *testing.T) {
 			}
 			if !slices.Equal(fakeRepo.todos, tt.todos) {
 				t.Errorf("expected %v, got %v", tt.todos, fakeRepo.todos)
+			}
+		})
+	}
+}
+
+func TestRunApp_Search(t *testing.T) {
+	tests := []struct {
+		name      string
+		todos     []todo.Todo
+		args      []string
+		wantedMsg string
+	}{
+		{
+			name: "search matched",
+			todos: []todo.Todo{
+				{
+					ID:    1,
+					Title: "Learn Go",
+					Done:  true,
+				},
+				{
+					ID:    2,
+					Title: "Sleep",
+				},
+				{
+					ID:    3,
+					Title: "Learn TS",
+				},
+			},
+			args:      []string{"search", "Learn"},
+			wantedMsg: "1. [x] Learn Go\n3. [ ] Learn TS\n",
+		},
+		{
+			name: "search not found",
+			todos: []todo.Todo{
+				{
+					ID:    1,
+					Title: "Learn Go",
+					Done:  true,
+				},
+				{
+					ID:    2,
+					Title: "Sleep",
+				},
+				{
+					ID:    3,
+					Title: "Learn TS",
+				},
+			},
+			args:      []string{"search", "apple"},
+			wantedMsg: "找不到任何項目\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			dir := t.TempDir()
+			path := filepath.Join(dir, "todos.json")
+			data, err := json.Marshal(tt.todos)
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = os.WriteFile(path, data, 0644)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			code := runAppWithPath(tt.args, &stdout, &stderr, path)
+			if code != 0 {
+				t.Errorf("expect code 0, got %d", code)
+			}
+			if stderr.String() != "" {
+				t.Errorf("unexpected error message: %s", stderr.String())
+			}
+
+			got := stdout.String()
+			if tt.wantedMsg != got {
+				t.Errorf("expected %q, got %q", tt.wantedMsg, got)
+			}
+
+			data, err = os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var todosFromFile []todo.Todo
+			err = json.Unmarshal(data, &todosFromFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(tt.todos, todosFromFile) {
+				t.Errorf("expected %v,got %v", tt.todos, todosFromFile)
+			}
+		})
+	}
+}
+
+func TestRunApp_Search_Failed(t *testing.T) {
+	tests := []struct {
+		name         string
+		todos        []todo.Todo
+		args         []string
+		errorMessage string
+	}{
+		{
+			name: "search missing keyword",
+			todos: []todo.Todo{
+				{
+					ID:    1,
+					Title: "Learn Go",
+					Done:  true,
+				},
+			},
+			args:         []string{"search"},
+			errorMessage: "search missing keyword\n",
+		},
+		{
+			name: "search empty keyword",
+			todos: []todo.Todo{
+				{
+					ID:    1,
+					Title: "Learn Go",
+					Done:  true,
+				},
+			},
+			args:         []string{"search", ""},
+			errorMessage: "search empty keyword\n",
+		},
+		{
+			name: "search empty keyword (space)",
+			todos: []todo.Todo{
+				{
+					ID:    1,
+					Title: "Learn Go",
+					Done:  true,
+				},
+			},
+			args:         []string{"search", "   "},
+			errorMessage: "search empty keyword\n",
+		},
+		{
+			name: "search too many arguments",
+			todos: []todo.Todo{
+				{
+					ID:    1,
+					Title: "Learn Go",
+					Done:  true,
+				},
+			},
+			args:         []string{"search", "Go", "extra"},
+			errorMessage: "too many arguments\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			dir := t.TempDir()
+			path := filepath.Join(dir, "todos.json")
+			data, err := json.Marshal(tt.todos)
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = os.WriteFile(path, data, 0644)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			code := runAppWithPath(tt.args, &stdout, &stderr, path)
+			if code != 1 {
+				t.Errorf("expect code 1, got %d", code)
+			}
+			if stdout.String() != "" {
+				t.Errorf("unexpected message: %s", stdout.String())
+			}
+
+			if got := stderr.String(); got != tt.errorMessage {
+				t.Errorf("expected error message: %q, got %q", tt.errorMessage, got)
+			}
+
+			data, err = os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var todosFromFile []todo.Todo
+			err = json.Unmarshal(data, &todosFromFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(tt.todos, todosFromFile) {
+				t.Errorf("expected %v,got %v", tt.todos, todosFromFile)
 			}
 		})
 	}
